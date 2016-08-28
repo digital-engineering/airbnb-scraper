@@ -33,7 +33,7 @@ class AirbnbScraperItem(scrapy.Item):
     rating_communication = scrapy.Field()
     response_rate = scrapy.Field()
     response_time = scrapy.Field()
-    rev_count = scrapy.Field()
+    review_count = scrapy.Field()
     reviews = scrapy.Field()
     room_type = scrapy.Field()
     person_capacity = scrapy.Field()

@@ -11,13 +11,17 @@ class AirbnbSpider(scrapy.Spider):
     name = "airbnb_spider"
     allowed_domains = ["airbnb.com"]
 
-    def __init__(self, city, country, check_in, check_out, max_price, *args, **kwargs):
+    def __init__(self, city, country, check_in, check_out, max_price, neighborhoods='', *args, **kwargs):
         super(AirbnbSpider, self).__init__(*args, **kwargs)
         url = 'https://www.airbnb.com/s/{}--{}'.format(city, country)
         url += '?checkin={}'.format(urllib.parse.quote(check_in))
         url += '&checkout={}'.format(urllib.parse.quote(check_out))
         url += '&price_max={}'.format(max_price)
         url += '&hosting_amenities%5B%5D=4&room_types%5B%5D=Entire+home%2Fapt'  # wifi, entire home
+        if neighborhoods:
+            neighborhoods = map(lambda x: x.strip().replace(' ', '+'), neighborhoods.split(','))
+            for n in neighborhoods:
+                url += '&neighborhoods%5B%5D={}'.format(n)
         self.start_urls = [url]
 
     def parse(self, response):
@@ -30,7 +34,7 @@ class AirbnbSpider(scrapy.Spider):
             # otherwise loop over all pages and scrape!
             page_urls = [response.url + "&page=" + str(pageNumber) for pageNumber in range(1, last_page_number + 1)]
             for page_url in page_urls:
-                yield scrapy.Request(page_url, callback=self.parse_listing_results_page)
+                yield scrapy.Request(page_url, callback=self._parse_listing_results_page)
 
     @staticmethod
     def _last_page_number_in_search(response):
@@ -53,6 +57,7 @@ class AirbnbSpider(scrapy.Spider):
 
     @staticmethod
     def _parse_listing_contents(response):
+        """Obtain data from listing page."""
         item = AirbnbScraperItem()
         listing_array = response.xpath('//meta[@id="_bootstrap-listing"]/@content').extract()
         if listing_array:
@@ -77,16 +82,16 @@ class AirbnbSpider(scrapy.Spider):
                 item['summary'] = listing_description['summary']
                 item['transit'] = listing_description['transit']
             else:
-                item['name'] = listing_json['name']
-                item['summary'] = listing_json['summary']
                 item['description'] = listing_json['localized_description'] if listing_json[
                     'localized_description'] else listing_json['description']
+                item['name'] = listing_json['name']
+                item['summary'] = listing_json['summary']
 
         room_options_array = response.xpath('//meta[@id="_bootstrap-room_options"]/@content').extract()
         if room_options_array:
             room_options_json_all = json.loads(room_options_array[0])
             room_options_json = room_options_json_all['airEventData']
-            item['rev_count'] = room_options_json['visible_review_count']
+            item['review_count'] = room_options_json['visible_review_count']
             item['amenities'] = room_options_json['amenities']
             item['host_id'] = room_options_json_all['hostId']
             item['hosting_id'] = room_options_json['hosting_id']
@@ -108,7 +113,7 @@ class AirbnbSpider(scrapy.Spider):
         item['url'] = response.url
         yield item
 
-    def parse_listing_results_page(self, response):
+    def _parse_listing_results_page(self, response):
         for href in response.xpath('//a[@class="media-photo media-cover"]/@href').extract():
             # get all href of the specified kind and join them to be a valid url
             url = response.urljoin(href)

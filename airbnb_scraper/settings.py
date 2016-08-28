@@ -63,9 +63,47 @@ CONCURRENT_REQUESTS_PER_DOMAIN = 10
 
 # Configure item pipelines
 # See http://scrapy.readthedocs.org/en/latest/topics/item-pipeline.html
-# ITEM_PIPELINES = {
-#    'airbnb_scraper.pipelines.SomePipeline': 300,
-# }
+ITEM_PIPELINES = {
+    'airbnb_scraper.pipelines.AirbnbScraperPipeline': 300,
+}
+
+FEED_EXPORTERS = {
+    'csv': 'airbnb_scraper.exporter.AirbnbCsvItemExporter',
+}
+FIELDS_TO_EXPORT = [
+    'name',
+    'price',
+    'calendar_updated_at',
+    'min_nights',
+    'url',
+    'summary',
+    'description',
+    'space',
+    'satisfaction_guest',
+    'accuracy_rating',
+    'amenities',
+    'access',
+    'house_rules',
+    'response_rate',
+    'response_time',
+    'notes',
+    'cancel_policy',
+    'host_id',
+    'hosting_id',
+    'instant_book',
+    'interaction',
+    'neighborhood_overview',
+    'nightly_price',
+    'rating_checkin',
+    'rating_cleanliness',
+    'rating_communication',
+    'review_count',
+    'reviews',
+    'room_type',
+    'person_capacity',
+    'transit',
+    'bed_type',
+]
 
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See http://doc.scrapy.org/en/latest/topics/autothrottle.html
