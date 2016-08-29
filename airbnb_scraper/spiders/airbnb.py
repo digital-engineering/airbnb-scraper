@@ -10,6 +10,11 @@ from airbnb_scraper.items import AirbnbScraperItem
 class AirbnbSpider(scrapy.Spider):
     name = "airbnb_spider"
     allowed_domains = ["airbnb.com"]
+    _hosting_amenities = {
+        'wifi': 4,
+        'kitchen': 8,
+        'tv': 1,
+    }
 
     def __init__(self, city, country, check_in, check_out, max_price, neighborhoods='', *args, **kwargs):
         super(AirbnbSpider, self).__init__(*args, **kwargs)
@@ -17,7 +22,9 @@ class AirbnbSpider(scrapy.Spider):
         url += '?checkin={}'.format(urllib.parse.quote(check_in))
         url += '&checkout={}'.format(urllib.parse.quote(check_out))
         url += '&price_max={}'.format(max_price)
-        url += '&hosting_amenities%5B%5D=4&room_types%5B%5D=Entire+home%2Fapt'  # wifi, entire home
+        for name, id in self._hosting_amenities.items():
+            url += '&hosting_amenities%5B%5D={}'.format(id)
+        url += '&room_types%5B%5D=Entire+home%2Fapt'  # entire home
         if neighborhoods:
             neighborhoods = map(lambda x: x.strip().replace(' ', '+'), neighborhoods.split(','))
             for n in neighborhoods:
@@ -25,6 +32,7 @@ class AirbnbSpider(scrapy.Spider):
         self.start_urls = [url]
 
     def parse(self, response):
+        """Determine number of pages in search results, and iterate through each page of results."""
         # ge the last page number on the page
         last_page_number = self._last_page_number_in_search(response)
         if last_page_number < 1:
@@ -39,10 +47,9 @@ class AirbnbSpider(scrapy.Spider):
     @staticmethod
     def _last_page_number_in_search(response):
         try:  # to get the last page number
-            last_page_number = int(
-                response.xpath('//ul[@class="list-unstyled"]/li[last()-1]/a/@href').extract()[0].split('page=')[1])
-            return last_page_number
-
+            return int(
+                response.xpath('//ul[@class="list-unstyled"]/li[last()-1]/a/@href').extract()[0].split('page=')[1]
+            )
         except IndexError:  # if there is no page number
             # get the reason from the page
             reason = response.xpath('//p[@class="text-lead"]/text()').extract()
@@ -111,6 +118,7 @@ class AirbnbSpider(scrapy.Spider):
             item['nightly_price'] = room_options_json_all['nightly_price']
 
         item['url'] = response.url
+        item['name'] = '=HYPERLINK("{}", "{}")'.format(response.url, item['name'] if item['name'] else item['url'])
         yield item
 
     def _parse_listing_results_page(self, response):
