@@ -8,11 +8,14 @@ from scrapy.exceptions import DropItem
 
 class AirbnbScraperPipeline:
     def __init__(self):
+        """Class constructor."""
         self._cannot_have_regex = settings.get('CANNOT_HAVE', None)
         if self._cannot_have_regex:
             self._cannot_have_regex = re.compile(str(self._cannot_have_regex), re.IGNORECASE)
 
-        self._chromium_path = '/usr/bin/chromium %s'
+        self._web_browser = settings.get('WEB_BROWSER', None)
+        if self._web_browser:
+            self._web_browser += ' %s'  # append URL placeholder
 
         self._must_have_regex = settings.get('MUST_HAVE', None)
         if self._must_have_regex:
@@ -38,5 +41,7 @@ class AirbnbScraperPipeline:
             if not has_must_haves:
                 raise DropItem('Not Found: {}'.format(self._must_have_regex.pattern))
 
-        webbrowser.get(self._chromium_path).open(item['url'])
+        if self._web_browser:
+            webbrowser.get(self._web_browser).open(item['url'])
+
         return item
