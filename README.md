@@ -17,14 +17,19 @@ work with their new DOM.
 ## Example Usage
 
 ```
-crawl airbnb_spider -a city=Madrid -a country=Spain \
-    -a check_in=9/27/2016 -a check_out=11/04/2016 \
-    -a max_price=1800 \
-    -a neighborhoods="Acacias,Almagro,Arganzuela,Argüelles,Centro,Cortes,Embajadores,Imperial,Jerónimos,La Latina,Malasaña,Moncloa,Palacio,Recoletos,Retiro,Salamanca,Sol" \ 
+scrapy crawl airbnb_spider \
+    -a city=Madrid \
+    -a country=Spain \
+    -a check_in=10/04/2016 \
+    -a check_out=11/01/2016 \
+    -a max_price=1900 \
+    -a min_price=1800 \
+    -a neighborhoods="Acacias,Almagro,Arganzuela,Argüelles,Centro,Cortes,Embajadores,Imperial,Jerónimos,La Latina,Malasaña,Moncloa,Palacio,Recoletos,Retiro,Salamanca,Sol" \
+    -s MUST_HAVE="(atico|attic|balcon|terra|patio|outdoor|roof|view)" \
     -s CANNOT_HAVE="studio" \
-    -s MUST_HAVE="(balcon|terra|patio)" \
-    -s WEB_BROWSER="/usr/bin/chromium %s" \
-    -o madrid.xlsx 
+    -s MINIMUM_WEEKLY_DISCOUNT=20 \
+    -s WEB_BROWSER="/usr/bin/chromium" \
+    -o madrid.xlsx
 ```
 
 ## Scraping Description
@@ -52,9 +57,10 @@ the Airbnb site.
 
 * `city`, `state`: City and State to search. **(required)** 
 * `check_in`, `check_out`: Check-in and Check-out dates. **(required)** 
-* `max_price`: Maximum price for the period. The Airbnb search algo seems
-  to scale this based upon search length. So it will be either the
-  daily, weekly, or monthly price depending on the length of the stay. 
+* `min_price`, `max_price`: Minimum and maximum price for the period. 
+  The Airbnb search algo seems to scale this based upon search length. 
+  So it will be either the daily or monthly price, depending on the 
+  length of the stay. 
   **(required)**
 * `neighborhoods`: Comma-separated list of neighborhoods within the city
   to filter for. **(optional)**
@@ -76,6 +82,14 @@ the command line using the `-s` flag as in the example above.
   export, i.e. all fields of `AirbnbScraperItem`. Comment items to 
   remove undesired fields from output.
   
+* `MINIMUM_MONTHLY_DISCOUNT=30`  
+  Minimum monthly discount. 
+  **(optional)**
+
+* `MINIMUM_WEEKLY_DISCOUNT=25`  
+  Minimum weekly discount. 
+  **(optional)**
+
 * `MUST_HAVE="(<must-have-regex>)"`  
   Only accept listings that match the given regex pattern. 
   **(optional)**

@@ -105,6 +105,9 @@ FIELDS_TO_EXPORT = [
     #    'bed_type',
 ]
 
+MINIMUM_MONTHLY_DISCOUNT = 30  # percent
+MINIMUM_WEEKLY_DISCOUNT = 30  # percent
+
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See http://doc.scrapy.org/en/latest/topics/autothrottle.html
 AUTOTHROTTLE_ENABLED = True

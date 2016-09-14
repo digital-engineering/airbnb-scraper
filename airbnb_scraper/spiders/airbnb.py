@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging
 import json
+import re
 import scrapy
 import urllib.parse
 
@@ -10,20 +11,27 @@ from airbnb_scraper.items import AirbnbScraperItem
 class AirbnbSpider(scrapy.Spider):
     name = "airbnb_spider"
     allowed_domains = ["airbnb.com"]
+
+    # Desired hosting amenities and corresponding IDs. Determined by observing search GET parameters.
     _hosting_amenities = {
         'wifi': 4,
         'kitchen': 8,
         'tv': 1,
     }
 
-    def __init__(self, city, country, check_in, check_out, max_price, neighborhoods='', *args, **kwargs):
+    def __init__(self, city: str, country: str, check_in: str, check_out: str, max_price: str = None,
+                 min_price: str = None, neighborhoods: str = None, *args, **kwargs):
+        """Class constructor."""
         super(AirbnbSpider, self).__init__(*args, **kwargs)
         url = 'https://www.airbnb.com/s/{}--{}'.format(city, country)
         url += '?checkin={}'.format(urllib.parse.quote(check_in))
         url += '&checkout={}'.format(urllib.parse.quote(check_out))
-        url += '&price_max={}'.format(max_price)
-        for name, id in self._hosting_amenities.items():
-            url += '&hosting_amenities%5B%5D={}'.format(id)
+        if max_price:
+            url += '&price_max={}'.format(max_price)
+        if min_price:
+            url += '&price_min={}'.format(min_price)
+        for name, amenity_id in self._hosting_amenities.items():
+            url += '&hosting_amenities%5B%5D={}'.format(amenity_id)
         url += '&room_types%5B%5D=Entire+home%2Fapt'  # entire home
         if neighborhoods:
             neighborhoods = map(lambda x: x.strip().replace(' ', '+'), neighborhoods.split(','))
@@ -46,10 +54,11 @@ class AirbnbSpider(scrapy.Spider):
 
     @staticmethod
     def _last_page_number_in_search(response):
+        """Get last page number of search results."""
         try:  # to get the last page number
-            return int(
-                response.xpath('//ul[@class="list-unstyled"]/li[last()-1]/a/@href').extract()[0].split('page=')[1]
-            )
+            pages = response.xpath('//ul[@class="list-unstyled"]/li[last()-1]/a/@href').extract()
+            last_page = pages[0].split('page=')[1]
+            return int(last_page)
         except IndexError:  # if there is no page number
             # get the reason from the page
             reason = response.xpath('//p[@class="text-lead"]/text()').extract()
@@ -75,6 +84,7 @@ class AirbnbSpider(scrapy.Spider):
             item['min_nights'] = listing_json['min_nights']
             item['person_capacity'] = listing_json['person_capacity']
             item['reviews'] = '\n\n'.join([r['comments'] for r in listing_json['sorted_reviews']])
+            item['additional_house_rules'] = listing_json['additional_house_rules']
 
             listing_description = listing_json['localized_sectioned_description']
             if listing_description:
@@ -89,10 +99,19 @@ class AirbnbSpider(scrapy.Spider):
                 item['summary'] = listing_description['summary']
                 item['transit'] = listing_description['transit']
             else:
-                item['description'] = listing_json['localized_description'] if listing_json[
-                    'localized_description'] else listing_json['description']
+                item['description'] = listing_json.get('localized_description', listing_json['description'])
                 item['name'] = listing_json['name']
                 item['summary'] = listing_json['summary']
+
+            listing_price = listing_json.get('price_interface')
+            if listing_price:
+                item['monthly_discount'] = listing_price['monthly_discount']['value']
+                if item['monthly_discount']:
+                    item['monthly_discount'] = int(re.sub("[^0-9]", '', item['monthly_discount']))  # strip percentage
+
+                item['weekly_discount'] = listing_price['weekly_discount']['value']
+                if item['weekly_discount']:
+                    item['weekly_discount'] = int(re.sub("[^0-9]", '', item['weekly_discount']))  # strip percentage
 
         room_options_array = response.xpath('//meta[@id="_bootstrap-room_options"]/@content').extract()
         if room_options_array:
@@ -114,14 +133,18 @@ class AirbnbSpider(scrapy.Spider):
             item['instant_book'] = room_options_json['instant_book_possible']
             item['accuracy_rating'] = room_options_json['accuracy_rating']
             item['response_time'] = room_options_json['response_time_shown']
-            item['response_rate'] = room_options_json['reponse_rate_shown']
+            item['response_rate'] = room_options_json['response_rate_shown']
             item['nightly_price'] = room_options_json_all['nightly_price']
 
         item['url'] = response.url
-        item['name'] = '=HYPERLINK("{}", "{}")'.format(response.url, item['name'] if item['name'] else item['url'])
+
+        # create excel hyperlink formula
+        item['name'] = '=HYPERLINK("{}", "{}")'.format(response.url, item.get('name', item['url']))
+
         yield item
 
     def _parse_listing_results_page(self, response):
+        """Yield a separate request for each listing on the results page."""
         for href in response.xpath('//a[@class="media-photo media-cover"]/@href').extract():
             # get all href of the specified kind and join them to be a valid url
             url = response.urljoin(href)
