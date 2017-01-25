@@ -13,6 +13,8 @@ class AirbnbScraperPipeline:
         self._minimum_monthly_discount = int(settings.get('MINIMUM_MONTHLY_DISCOUNT', None))
         self._minimum_weekly_discount = int(settings.get('MINIMUM_WEEKLY_DISCOUNT', None))
 
+        self._skip_list = settings.get('SKIP_LIST', None)
+
         self._cannot_have_regex = settings.get('CANNOT_HAVE', None)
         if self._cannot_have_regex:
             self._cannot_have_regex = re.compile(str(self._cannot_have_regex), re.IGNORECASE)
@@ -27,6 +29,9 @@ class AirbnbScraperPipeline:
 
     def process_item(self, item, spider):
         """Drop items not fitting parameters. Open in browser if specified. Return accepted items."""
+
+        if str(item['id']) in self._skip_list:
+            raise DropItem('Item in skip list: {}'.format(item['id']))
 
         # check minimum discounts
         monthly_discount = item['monthly_discount']

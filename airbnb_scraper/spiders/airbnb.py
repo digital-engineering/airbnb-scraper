@@ -14,9 +14,10 @@ class AirbnbSpider(scrapy.Spider):
 
     # Desired hosting amenities and corresponding IDs. Determined by observing search GET parameters.
     _hosting_amenities = {
-        'wifi': 4,
+        'a/c': 5,
         'kitchen': 8,
         'tv': 1,
+        'wifi': 4,
     }
 
     def __init__(self, city: str, country: str, check_in: str, check_out: str, max_price: str = None,
@@ -80,6 +81,7 @@ class AirbnbSpider(scrapy.Spider):
             listing_json_all = json.loads(listing_array[0])
             listing_json = listing_json_all['listing']
 
+            item['id'] = listing_json['id']
             item['calendar_updated_at'] = listing_json['calendar_updated_at']
             item['min_nights'] = listing_json['min_nights']
             item['person_capacity'] = listing_json['person_capacity']

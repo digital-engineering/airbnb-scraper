@@ -22,6 +22,7 @@ class AirbnbScraperItem(scrapy.Item):
     host_id = scrapy.Field()
     hosting_id = scrapy.Field()
     house_rules = scrapy.Field()
+    id = scrapy.Field()
     instant_book = scrapy.Field()
     interaction = scrapy.Field()
     min_nights = scrapy.Field()

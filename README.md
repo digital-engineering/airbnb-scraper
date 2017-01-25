@@ -1,18 +1,14 @@
-# Airbnb Spider: Airbnb advanced search using Scrapy 
+# Nomad Airbnb: Airbnb advanced search for digital nomads using Scrapy 
 
 ## Intro
 
-I tend to travel a lot, and for big cities Airbnb just doesn't seem to
-cut it. I didn't want to have to write this script, but there is no way
-to do any sort of advanced Airbnb search by default, and they limit you
-to 300 results per search which means it is a chore to see their 
-entire inventory. 
+I travel a lot, and I love using Airbnb to find short term rentals. Their 
+search is pretty good, but sometimes I find it lacking. For instance, you can't
+do a full text search, and they limit you to 300 results per search which means 
+it is a chore to see their entire inventory. 
 
-Luckily, they make it easy by storing most of their listing data in big 
-javascript objects at the bottom of the page in some meta HTML tags. Of 
-course, if this were to change, the script would have to be modified to 
-work with their new DOM.
-
+Luckily, they make it easy by storing most of their listing data in big
+javascript objects at the bottom of the page in some meta HTML tags.
 
 ## Example Usage
 
@@ -34,44 +30,39 @@ scrapy crawl airbnb_spider \
 
 ## Scraping Description
 
-After running the above command, the scraper will start. It will first 
-run the search query, then determine the quantity of result pages, and
-finally iterate through each of those, scraping each of the property 
-listings on each page.
+After running the above command, the scraper will start. It will first run the 
+search query, then determine the quantity of result pages, and finally iterate 
+through each of those, scraping each of the property listings on each page.
 
-Scraped items (listings) will be passed to the default item pipeline,
-where, optionally, the `description`, `name`, `summary`, and `reviews` 
-fields will be filtered using either or both of the `CANNOT_HAVE` and 
-`MUST_HAVE` regexes. Filtered items will be dropped. Accepted items 
-can be optionally opened in a given web browser, so that you can easily 
-view your search results.
+Scraped items (listings) will be passed to the default item pipeline, where, 
+optionally, the `description`, `name`, `summary`, and `reviews` fields will be
+filtered using either or both of the `CANNOT_HAVE` and `MUST_HAVE` regexes. 
+Filtered items will be dropped. Accepted items can be optionally opened in a 
+given web browser, so that you can easily view your search results.
 
-Finally, the output can be saved to an xlsx format file for additional
+Finally, the output can be saved to an xlsx format file for additional 
 filtering, sorting, and inspection.
-
 
 ## Parameters
 
-You can find the values for these by first doing a search manually on 
-the Airbnb site. 
+You can find the values for these by first doing a search manually on the 
+Airbnb site. 
 
 * `city`, `state`: City and State to search. **(required)** 
 * `check_in`, `check_out`: Check-in and Check-out dates. **(required)** 
-* `min_price`, `max_price`: Minimum and maximum price for the period. 
-  The Airbnb search algo seems to scale this based upon search length. 
-  So it will be either the daily or monthly price, depending on the 
-  length of the stay. 
-  **(required)**
+* `min_price`, `max_price`: Minimum and maximum price for the period. **(required)**  
+  *The Airbnb search algorithm seems to scale this based upon search length. So 
+  it will be either the daily or monthly price, depending on the length of the 
+  stay.*
 * `neighborhoods`: Comma-separated list of neighborhoods within the city
   to filter for. **(optional)**
 * `output`: Name of output file. Only xlsx output is tested. 
   **(optional)**
 
-         
 ## Settings
 
-These settings can be edited in the `settings.py` file, or appended to 
-the command line using the `-s` flag as in the example above.
+These settings can be edited in the `settings.py` file, or appended to the 
+command line using the `-s` flag as in the example above.
 
 * `CANNOT_HAVE="<cannot-have-regex>"`  
   Don't accept listings that match the given regex pattern. 
@@ -111,7 +102,6 @@ the command line using the `-s` flag as in the example above.
 ## Requirements
 
 * [Scrapy 1.1.2](http://scrapy.org/)
-
 * [openpyxl 2.3.5](https://openpyxl.readthedocs.io/en/default/#installation)
 
 
