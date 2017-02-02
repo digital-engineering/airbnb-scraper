@@ -30,17 +30,19 @@ class AirbnbScraperPipeline:
     def process_item(self, item, spider):
         """Drop items not fitting parameters. Open in browser if specified. Return accepted items."""
 
-        if str(item['id']) in self._skip_list:
+        if self._skip_list and str(item['id']) in self._skip_list:
             raise DropItem('Item in skip list: {}'.format(item['id']))
 
         # check minimum discounts
-        monthly_discount = item['monthly_discount']
-        if self._minimum_monthly_discount > monthly_discount:
-            raise DropItem('Monthly discount too low: {}'.format(monthly_discount))
+        if 'monthly_discount' in item:
+            monthly_discount = item['monthly_discount']
+            if self._minimum_monthly_discount > monthly_discount:
+                raise DropItem('Monthly discount too low: {}'.format(monthly_discount))
 
-        weekly_discount = item['weekly_discount']
-        if self._minimum_weekly_discount > weekly_discount:
-            raise DropItem('Weekly discount too low: {}'.format(weekly_discount))
+        if 'weekly_discount' in item:
+            weekly_discount = item['weekly_discount']
+            if self._minimum_weekly_discount > weekly_discount:
+                raise DropItem('Weekly discount too low: {}'.format(weekly_discount))
 
         # check regexes
         if self._cannot_have_regex:

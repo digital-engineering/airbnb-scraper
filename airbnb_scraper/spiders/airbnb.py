@@ -107,12 +107,12 @@ class AirbnbSpider(scrapy.Spider):
 
             listing_price = listing_json.get('price_interface')
             if listing_price:
-                item['monthly_discount'] = listing_price['monthly_discount']['value']
-                if item['monthly_discount']:
+                if listing_price['monthly_discount']:
+                    item['monthly_discount'] = listing_price['monthly_discount']['value']
                     item['monthly_discount'] = int(re.sub("[^0-9]", '', item['monthly_discount']))  # strip percentage
 
-                item['weekly_discount'] = listing_price['weekly_discount']['value']
-                if item['weekly_discount']:
+                if listing_price['weekly_discount']:
+                    item['weekly_discount'] = listing_price['weekly_discount']['value']
                     item['weekly_discount'] = int(re.sub("[^0-9]", '', item['weekly_discount']))  # strip percentage
 
         room_options_array = response.xpath('//meta[@id="_bootstrap-room_options"]/@content').extract()
