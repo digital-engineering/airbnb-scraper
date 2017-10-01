@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Scrapy settings for airbnb_scraper project
+# Scrapy settings for deepbnb project
 #
 # For simplicity, this file contains only settings considered important or
 # commonly used. You can find more settings consulting the documentation:
@@ -9,13 +9,33 @@
 #     http://scrapy.readthedocs.org/en/latest/topics/downloader-middleware.html
 #     http://scrapy.readthedocs.org/en/latest/topics/spider-middleware.html
 
-BOT_NAME = 'airbnb_scraper'
+BOT_NAME = 'deepbnb'
 
-SPIDER_MODULES = ['airbnb_scraper.spiders']
-NEWSPIDER_MODULE = 'airbnb_scraper.spiders'
+SPIDER_MODULES = ['deepbnb.spiders']
+NEWSPIDER_MODULE = 'deepbnb.spiders'
+
+# Splash config (https://github.com/scrapy-plugins/scrapy-splash)
+#
+# Add the Splash server address
+SPLASH_URL = 'http://localhost:8050'
+
+# Enable the Splash middleware by adding it and changing HttpCompressionMiddleware priority
+# Order 723 is just before HttpProxyMiddleware (750) in default scrapy settings.
+# HttpCompressionMiddleware priority should be changed in order to allow advanced response processing;
+# see https://github.com/scrapy/scrapy/issues/1895 for details
+DOWNLOADER_MIDDLEWARES = {
+    'scrapy_splash.SplashCookiesMiddleware': 723,
+    'scrapy_splash.SplashMiddleware': 725,
+    'scrapy.downloadermiddlewares.httpcompression.HttpCompressionMiddleware': 810,
+}
+
+# These 2 lines are necessary because Scrapy doesn't provide a way to override request fingerprints calculation
+# algorithm globally; this could change in future.
+DUPEFILTER_CLASS = 'scrapy_splash.SplashAwareDupeFilter'
+HTTPCACHE_STORAGE = 'scrapy_splash.SplashAwareFSCacheStorage'
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
-USER_AGENT = 'airbnb_scraper (+https://www.bashedev.com)'
+USER_AGENT = 'deepbnb (+https://www.bashedev.com)'
 
 # Obey robots.txt rules
 ROBOTSTXT_OBEY = True
@@ -46,13 +66,13 @@ CONCURRENT_REQUESTS_PER_DOMAIN = 10
 # Enable or disable spider middlewares
 # See http://scrapy.readthedocs.org/en/latest/topics/spider-middleware.html
 # SPIDER_MIDDLEWARES = {
-#    'airbnb_scraper.middlewares.MyCustomSpiderMiddleware': 543,
+#    'deepbnb.middlewares.MyCustomSpiderMiddleware': 543,
 # }
 
 # Enable or disable downloader middlewares
 # See http://scrapy.readthedocs.org/en/latest/topics/downloader-middleware.html
 # DOWNLOADER_MIDDLEWARES = {
-#    'airbnb_scraper.middlewares.MyCustomDownloaderMiddleware': 543,
+#    'deepbnb.middlewares.MyCustomDownloaderMiddleware': 543,
 # }
 
 # Enable or disable extensions
@@ -64,11 +84,11 @@ CONCURRENT_REQUESTS_PER_DOMAIN = 10
 # Configure item pipelines
 # See http://scrapy.readthedocs.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
-    'airbnb_scraper.pipelines.AirbnbScraperPipeline': 300,
+    'deepbnb.pipelines.AirbnbScraperPipeline': 300,
 }
 
 FEED_EXPORTERS = {
-    'xlsx': 'airbnb_scraper.exporter.AirbnbExcelItemExporter',
+    'xlsx': 'deepbnb.exporter.AirbnbExcelItemExporter',
 }
 FIELDS_TO_EXPORT = [
     'name',

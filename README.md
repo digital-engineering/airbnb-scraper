@@ -2,13 +2,12 @@
 
 ## Intro
 
-I travel a lot, and I love using Airbnb to find short term rentals. Their 
-search is pretty good, but sometimes I find it lacking. For instance, you can't
-do a full text search, and they limit you to 300 results per search which means 
+Airbnb's search is pretty good, but sometimes I find it lacking. For instance, you 
+can't do a full text search, and they limit you to 300 results per search which means 
 it is a chore to see their entire inventory. 
 
-Luckily, they make it easy by storing most of their listing data in big
-javascript objects at the bottom of the page in some meta HTML tags.
+Luckily, they make it easy by storing most of their listing data (i.e. "state") in big
+JSON objects at the bottom of the page in the content attribute of meta HTML tags.
 
 ## Example Usage
 
