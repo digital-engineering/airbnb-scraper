@@ -14,8 +14,10 @@ BOT_NAME = 'deepbnb'
 SPIDER_MODULES = ['deepbnb.spiders']
 NEWSPIDER_MODULE = 'deepbnb.spiders'
 
+#
 # Splash config (https://github.com/scrapy-plugins/scrapy-splash)
 #
+
 # Add the Splash server address
 SPLASH_URL = 'http://localhost:8050'
 
@@ -34,12 +36,16 @@ DOWNLOADER_MIDDLEWARES = {
 DUPEFILTER_CLASS = 'scrapy_splash.SplashAwareDupeFilter'
 HTTPCACHE_STORAGE = 'scrapy_splash.SplashAwareFSCacheStorage'
 
+#
+# Scraper config
+#
+
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 USER_AGENT = 'deepbnb (+https://www.bashedev.com)'
 
 # Obey robots.txt rules
 ROBOTSTXT_OBEY = True
-
+WEB_BROWSER = 'chromium'
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
 # CONCURRENT_REQUESTS = 32
 
@@ -67,12 +73,6 @@ CONCURRENT_REQUESTS_PER_DOMAIN = 10
 # See http://scrapy.readthedocs.org/en/latest/topics/spider-middleware.html
 # SPIDER_MIDDLEWARES = {
 #    'deepbnb.middlewares.MyCustomSpiderMiddleware': 543,
-# }
-
-# Enable or disable downloader middlewares
-# See http://scrapy.readthedocs.org/en/latest/topics/downloader-middleware.html
-# DOWNLOADER_MIDDLEWARES = {
-#    'deepbnb.middlewares.MyCustomDownloaderMiddleware': 543,
 # }
 
 # Enable or disable extensions

@@ -33,16 +33,13 @@ class AirbnbScraperPipeline:
         if self._skip_list and str(item['id']) in self._skip_list:
             raise DropItem('Item in skip list: {}'.format(item['id']))
 
-        # check minimum discounts
-        if 'monthly_discount' in item:
-            monthly_discount = item['monthly_discount']
-            if self._minimum_monthly_discount > monthly_discount:
-                raise DropItem('Monthly discount too low: {}'.format(monthly_discount))
+        if self._minimum_monthly_discount and 'monthly_discount' in item:
+            if item['monthly_discount'] < self._minimum_monthly_discount:
+                raise DropItem('Monthly discount too low: {}'.format(item['monthly_discount']))
 
-        if 'weekly_discount' in item:
-            weekly_discount = item['weekly_discount']
-            if self._minimum_weekly_discount > weekly_discount:
-                raise DropItem('Weekly discount too low: {}'.format(weekly_discount))
+        if self._minimum_weekly_discount and 'weekly_discount' in item:
+            if item['weekly_discount'] < self._minimum_monthly_discount:
+                raise DropItem('Weekly discount too low: {}'.format(item['weekly_discount']))
 
         # check regexes
         if self._cannot_have_regex:

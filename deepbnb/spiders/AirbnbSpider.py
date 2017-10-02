@@ -13,21 +13,38 @@ class AirbnbSpider(scrapy.Spider):
     name = "airbnb"
     allowed_domains = ["airbnb.com"]
 
-    # Desired hosting amenities and corresponding IDs. Determined by observing search GET parameters.
-    _hosting_amenities = {
-        'a/c': 5,
-        'kitchen': 8,
-        'tv': 1,
-        'washer': 33,
-        'wifi': 4,
+    _query_parts = {
+        'adults': 1,
+        'check_in': '2017-10-07',
+        'check_out': '2017-11-21',
+        'guests': 1,
+        'hosting_amenities': {
+            # Desired hosting amenities and corresponding IDs. Determined by observing search GET parameters.
+            'a/c': 5,
+            'kitchen': 8,
+            'tv': 58,
+            'washer': 33,
+            'dryer': 34,
+            'wifi': 4,
+        },
+        'map': {
+            'coords': {
+                'ne_lat': 33.339050291964746,
+                'ne_lng': -117.04326732747506,
+                'sw_lat': 32.561755675390934,
+                'sw_lng': -117.69970043294381
+            },
+            'zoom': 10
+        },
+        'neighborhoods': None,
+        'pets': 'false',
+        'price_max': 2750,
+        'price_min': None,
+        'query': 'California--United-States',
+        'refinements': ['homes'],
+        'room_types': ['Entire%20home%2Fapt'],
+        'search_by_map': 'true'
     }
-
-    _check_in = '2017-10-07'
-    _check_out = '2017-11-21'
-    _neighborhoods = None
-    _price_max = None
-    _price_min = None
-    _query = 'California--United-States'
 
     def start_requests(self):
         urls = [self._build_airbnb_start_url()]
@@ -47,17 +64,58 @@ class AirbnbSpider(scrapy.Spider):
             yield SplashRequest(page_url, self._parse_listing_results_page, args={'wait': 5})
 
     def _build_airbnb_start_url(self):
-        url = 'https://www.airbnb.com/s/{}/homes'.format(self._query)
-        url += '?checkin={}&checkout={}'.format(self._check_in, self._check_out)
-        if self._price_max:
-            url += '&price_max={}'.format(self._price_max)
-        if self._price_min:
-            url += '&price_min={}'.format(self._price_min)
-        if self._neighborhoods:
-            neighborhoods = map(lambda x: x.strip().replace(' ', '+'), self._neighborhoods.split(','))
+        """Generate the search URL from given parameters.
+
+        Example URL:
+        https://www.airbnb.com/s/California--United-States/homes
+                                ?checkin=2017-10-14&checkout=2017-11-18&guests=1&adults=1&pets=false
+                                &refinements%5B%5D=homes&room_types%5B%5D=Entire%20home%2Fapt
+        """
+        url = 'https://www.airbnb.com/s/{}/homes'.format(self._query_parts['query'])
+        query_parts = []
+        if self._query_parts['check_in'] and self._query_parts['check_out']:
+            query_parts.append(
+                'checkin={}&checkout={}'.format(self._query_parts['check_in'], self._query_parts['check_out']))
+
+        if self._query_parts['price_max']:
+            query_parts.append('price_max={}'.format(self._query_parts['price_max']))
+
+        if self._query_parts['price_min']:
+            query_parts.append('price_min={}'.format(self._query_parts['price_min']))
+
+        if self._query_parts['hosting_amenities']:
+            amenities = self._query_parts['hosting_amenities'].values()
+            for a in amenities:
+                query_parts.append('&hosting_amenities%5B%5D={}'.format(a))
+
+        if self._query_parts['neighborhoods']:
+            neighborhoods = map(lambda x: x.strip().replace(' ', '+'), self._query_parts['neighborhoods'].split(','))
             for n in neighborhoods:
-                url += '&neighborhoods%5B%5D={}'.format(n)
-                # url += '&allow_override%5B%5D=&page=1'  # other stuff
+                query_parts.append('&neighborhoods%5B%5D={}'.format(n))
+
+        if self._query_parts['adults']:
+            query_parts.append('adults={}'.format(self._query_parts['adults']))
+
+        if self._query_parts['guests']:
+            query_parts.append('guests={}'.format(self._query_parts['guests']))
+
+        if self._query_parts['pets']:
+            query_parts.append('pets={}'.format(self._query_parts['pets']))
+
+        if self._query_parts['refinements']:
+            for r in self._query_parts['refinements']:
+                query_parts.append('refinements%5B%5D={}'.format(r))
+
+        if self._query_parts['room_types']:
+            for r in self._query_parts['room_types']:
+                query_parts.append('room_types%5B%5D={}'.format(r))
+
+        if self._query_parts['search_by_map']:
+            for name, value in self._query_parts['map']['coords'].items():
+                query_parts.append('{}={}'.format(name, value))
+            query_parts.append('zoom={}'.format(self._query_parts['map']['zoom']))
+
+        url += '?{}'.format('&'.join(query_parts))
 
         return url
 
@@ -118,8 +176,8 @@ class AirbnbSpider(scrapy.Spider):
             item['latitude'] = listing['lat']
             item['longitude'] = listing['lng']
 
+        item['monthly_discount'] = listing.get('price_interface', {}).get('monthly_discount', {}).get('value')
         item['min_nights'] = listing['min_nights']
-        item['monthly_discount'] = listing['price_interface']['monthly_discount']['value']
         price = response.xpath('//span[@id="book-it-price-string"]//text()').extract()
         price_value = int(price[0].replace('$', ''))
         item['monthly_price'] = price_value if price[1] == 'per month' else None
@@ -150,7 +208,7 @@ class AirbnbSpider(scrapy.Spider):
         item['space'] = listing['space_interface']
         item['summary'] = listing['summary']
         item['url'] = response.url
-        item['weekly_discount'] = listing['price_interface']['weekly_discount']['value']
+        item['weekly_discount'] = listing.get('price_interface', {}).get('weekly_discount', {}).get('value')
 
         yield item
 
