@@ -11,8 +11,23 @@ JSON objects at the bottom of the page in the content attribute of meta HTML tag
 
 ## Example Usage
 
+NOTE: It's now necessary to render JavaScript in order to scrape Airbnb. Follow the 
+instructions to install scrapy-splash here:
+
+https://github.com/scrapy-plugins/scrapy-splash 
+
+You will need to ensure the JS engine is running before running the scrapy crawl command.
+
+Minimal Usage:
+
+    scrapy crawl airbnb
+    
+### Edit *AirbnbSpider.py* to configure `_query_parts`
+    
+Advanced command line options:
+
 ```
-scrapy crawl airbnb_spider \
+scrapy crawl airbnb \
     -a city=Madrid \
     -a country=Spain \
     -a check_in=10/04/2016 \

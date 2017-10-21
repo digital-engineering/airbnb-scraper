@@ -15,8 +15,8 @@ class AirbnbSpider(scrapy.Spider):
 
     _query_parts = {
         'adults': 1,
-        'check_in': '2017-10-07',
-        'check_out': '2017-11-21',
+        'check_in': '2017-10-27',
+        'check_out': '2017-11-30',
         'guests': 1,
         'hosting_amenities': {
             # Desired hosting amenities and corresponding IDs. Determined by observing search GET parameters.
@@ -179,11 +179,15 @@ class AirbnbSpider(scrapy.Spider):
         item['monthly_discount'] = listing.get('price_interface', {}).get('monthly_discount', {}).get('value')
         item['min_nights'] = listing['min_nights']
         price = response.xpath('//span[@id="book-it-price-string"]//text()').extract()
-        price_value = int(price[0].replace('$', ''))
-        item['monthly_price'] = price_value if price[1] == 'per month' else None
+        if len(price) == 0:
+            print("Can't get price value for response: {}".format(price))
+            price_value = 0
+        else:
+            price_value = int(price[0].replace('$', ''))
+        item['monthly_price'] = price_value if (1 in price and price[1] == 'per month') else None
         item['name'] = '=HYPERLINK("{}", "{}")'.format(response.url, listing.get('name', response.url))
         item['neighborhood_overview'] = listing['sectioned_description']['neighborhood_overview']
-        item['nightly_price'] = price_value if price[1] == 'per night' else None
+        item['nightly_price'] = price_value if (1 in price and price[1] == 'per night') else None
         item['notes'] = listing['sectioned_description']['notes']
 
         item['rating_accuracy'] = listing['p3_event_data_logging']['accuracy_rating']
@@ -198,7 +202,8 @@ class AirbnbSpider(scrapy.Spider):
         item['review_count'] = listing['review_details_interface']['review_count']
         item['review_score'] = listing['review_details_interface']['review_score']
 
-        item['reviews'] = data['bootstrapData']['reduxData']['marketplacePdp']['reviewsInfo']['cumulativeReviews']
+        item['reviews'] = data['bootstrapData']['reduxData']['marketplacePdp'].get('reviewsInfo', {}).get(
+            'cumulativeReviews')
 
         item['room_type'] = listing['room_type_category']
         item['person_capacity'] = listing['p3_event_data_logging']['person_capacity']
@@ -208,7 +213,8 @@ class AirbnbSpider(scrapy.Spider):
         item['space'] = listing['space_interface']
         item['summary'] = listing['summary']
         item['url'] = response.url
-        item['weekly_discount'] = listing.get('price_interface', {}).get('weekly_discount', {}).get('value')
+        if 'price_interface' in listing and 'weekly_discount' in listing['price_interface']:
+            item['weekly_discount'] = listing['price_interface']['weekly_discount'].get('value')
 
         yield item
 
