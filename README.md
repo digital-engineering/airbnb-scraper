@@ -4,10 +4,12 @@
 
 Airbnb's search is pretty good, but sometimes I find it lacking. For instance, you 
 can't do a full text search, and they limit you to 300 results per search which means 
-it is a chore to see their entire inventory. 
+it is a chore to see their entire inventory.
+ 
+## Disclaimer
 
-Luckily, they make it easy by storing most of their listing data (i.e. "state") in big
-JSON objects at the bottom of the page in the content attribute of meta HTML tags.
+**Accessing Airbnb's unofficial API endpoints may violate their terms of service. This project is to be used for 
+educational purposes only.**
 
 ## Example Usage
 
