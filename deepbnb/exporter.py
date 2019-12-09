@@ -1,7 +1,6 @@
 import openpyxl
 import six
 
-from scrapy.conf import settings
 from scrapy.exporters import BaseItemExporter
 
 
@@ -10,9 +9,9 @@ class AirbnbExcelItemExporter(BaseItemExporter):
 
     def __init__(self, file, include_headers_line=True, join_multivalued=',', **kwargs):
         """Class constructor."""
-        fields_to_export = settings.get('FIELDS_TO_EXPORT', [])
-        if fields_to_export:
-            kwargs['fields_to_export'] = fields_to_export
+        # fields_to_export = settings.get('FIELDS_TO_EXPORT', [])
+        # if fields_to_export:
+        #     kwargs['fields_to_export'] = fields_to_export
 
         super().__init__(**kwargs)
 

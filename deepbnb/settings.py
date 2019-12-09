@@ -15,44 +15,22 @@ SPIDER_MODULES = ['deepbnb.spiders']
 NEWSPIDER_MODULE = 'deepbnb.spiders'
 
 #
-# Splash config (https://github.com/scrapy-plugins/scrapy-splash)
-#
-
-# Add the Splash server address
-SPLASH_URL = 'http://localhost:8050'
-
-# Enable the Splash middleware by adding it and changing HttpCompressionMiddleware priority
-# Order 723 is just before HttpProxyMiddleware (750) in default scrapy settings.
-# HttpCompressionMiddleware priority should be changed in order to allow advanced response processing;
-# see https://github.com/scrapy/scrapy/issues/1895 for details
-DOWNLOADER_MIDDLEWARES = {
-    'scrapy_splash.SplashCookiesMiddleware': 723,
-    'scrapy_splash.SplashMiddleware': 725,
-    'scrapy.downloadermiddlewares.httpcompression.HttpCompressionMiddleware': 810,
-}
-
-# These 2 lines are necessary because Scrapy doesn't provide a way to override request fingerprints calculation
-# algorithm globally; this could change in future.
-DUPEFILTER_CLASS = 'scrapy_splash.SplashAwareDupeFilter'
-HTTPCACHE_STORAGE = 'scrapy_splash.SplashAwareFSCacheStorage'
-
-#
 # Scraper config
 #
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
-USER_AGENT = 'deepbnb (+https://www.bashedev.com)'
+USER_AGENT = 'deepbnb (+https://digitalengineering.io)'
 
 # Obey robots.txt rules
 ROBOTSTXT_OBEY = True
-WEB_BROWSER = 'chromium'
+# WEB_BROWSER = 'chromium'
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
 # CONCURRENT_REQUESTS = 32
 
 # Configure a delay for requests for the same website (default: 0)
 # See http://scrapy.readthedocs.org/en/latest/topics/settings.html#download-delay
 # See also autothrottle settings and docs
-# DOWNLOAD_DELAY = 3
+DOWNLOAD_DELAY = 10
 # The download delay setting will honor only one of:
 CONCURRENT_REQUESTS_PER_DOMAIN = 10
 # CONCURRENT_REQUESTS_PER_IP = 16

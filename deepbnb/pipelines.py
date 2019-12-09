@@ -2,28 +2,40 @@
 import re
 import webbrowser
 
-from scrapy.conf import settings
 from scrapy.exceptions import DropItem
 
 
 class AirbnbScraperPipeline:
-    def __init__(self):
+
+    @classmethod
+    def from_crawler(cls, crawler):
+        return cls(
+            minimum_monthly_discount=crawler.settings.get('MINIMUM_MONTHLY_DISCOUNT'),
+            minimum_weekly_discount=crawler.settings.get('MINIMUM_WEEKLY_DISCOUNT'),
+            skip_list=crawler.settings.get('SKIP_LIST'),
+            cannot_have=crawler.settings.get('CANNOT_HAVE'),
+            must_have=crawler.settings.get('MUST_HAVE'),
+            web_browser=crawler.settings.get('WEB_BROWSER')
+        )
+
+    def __init__(self, minimum_monthly_discount, minimum_weekly_discount, skip_list, cannot_have, must_have,
+                 web_browser):
         """Class constructor."""
         self._fields_to_check = ['description', 'name', 'summary', 'reviews']
-        self._minimum_monthly_discount = int(settings.get('MINIMUM_MONTHLY_DISCOUNT', None))
-        self._minimum_weekly_discount = int(settings.get('MINIMUM_WEEKLY_DISCOUNT', None))
+        self._minimum_monthly_discount = minimum_monthly_discount
+        self._minimum_weekly_discount = minimum_weekly_discount
 
-        self._skip_list = settings.get('SKIP_LIST', None)
+        self._skip_list = skip_list
 
-        self._cannot_have_regex = settings.get('CANNOT_HAVE', None)
+        self._cannot_have_regex = cannot_have
         if self._cannot_have_regex:
             self._cannot_have_regex = re.compile(str(self._cannot_have_regex), re.IGNORECASE)
 
-        self._must_have_regex = settings.get('MUST_HAVE', None)
+        self._must_have_regex = must_have
         if self._must_have_regex:
             self._must_have_regex = re.compile(str(self._must_have_regex), re.IGNORECASE)
 
-        self._web_browser = settings.get('WEB_BROWSER', None)
+        self._web_browser = web_browser
         if self._web_browser:
             self._web_browser += ' %s'  # append URL placeholder (%s)
 

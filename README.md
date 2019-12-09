@@ -11,23 +11,16 @@ JSON objects at the bottom of the page in the content attribute of meta HTML tag
 
 ## Example Usage
 
-NOTE: It's now necessary to render JavaScript in order to scrape Airbnb. Follow the 
-instructions to install scrapy-splash here:
+Minimal scraper usage:
 
-https://github.com/scrapy-plugins/scrapy-splash 
-
-You will need to ensure the JS engine is running before running the scrapy crawl command.
-
-Minimal Usage:
-
-    scrapy crawl airbnb
+    scrapy crawl bnb
     
 ### Edit *AirbnbSpider.py* to configure `_query_parts`
     
 Advanced command line options:
 
 ```
-scrapy crawl airbnb \
+scrapy crawl bnb \
     -a city=Madrid \
     -a country=Spain \
     -a check_in=10/04/2016 \
@@ -115,8 +108,8 @@ command line using the `-s` flag as in the example above.
 
 ## Requirements
 
-* [Scrapy 1.1.2](http://scrapy.org/)
-* [openpyxl 2.3.5](https://openpyxl.readthedocs.io/en/default/#installation)
+* [Scrapy](http://scrapy.org/)
+* [openpyxl](https://openpyxl.readthedocs.io/en/default/#installation)
 
 
 ## Credits

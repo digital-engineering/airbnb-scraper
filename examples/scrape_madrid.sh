@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 cd ..
 
-scrapy crawl airbnb_spider \
+scrapy crawl bnb \
     -a city=Madrid \
     -a country=Spain \
     -a check_in=05/21/2017 \
