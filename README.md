@@ -13,13 +13,11 @@ educational purposes only.**
 
 ## Example Usage
 
-Minimal scraper usage:
+#### Minimal scraper usage:
 
     scrapy crawl bnb
     
-### Edit *AirbnbSpider.py* to configure `_query_parts`
-    
-Advanced command line options:
+#### Advanced command line options:
 
 ```
 scrapy crawl bnb \
