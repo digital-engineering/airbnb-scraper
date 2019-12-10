@@ -17,6 +17,8 @@ NEWSPIDER_MODULE = 'deepbnb.spiders'
 #
 # Scraper config
 #
+# Public development key
+AIRBNB_API_KEY = 'd306zoyjsyarp7ifhu67rjxn52tv0t20'
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 USER_AGENT = 'deepbnb (+https://digitalengineering.io)'
