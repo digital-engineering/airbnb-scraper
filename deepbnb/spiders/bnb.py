@@ -60,15 +60,19 @@ class BnbSpider(scrapy.Spider):
             next_section.update({'items_offset': items_offset})
             yield self._api_request(params=next_section, response=response)
 
-        params = {}
+        # handle listings
+        params = {
+            '_format': 'for_rooms_show',
+            'key':     self._api_key,
+        }
+
         if self._checkin:
-            params['checkin'] = self._checkin
-            params['checkout'] = self._checkout
+            params['check_in'] = self._checkin
+            params['check_out'] = self._checkout
 
         listings = self._get_listings_from_sections(tab['sections'])
         for listing in listings:  # request each property page
-            url = self._build_airbnb_url('/rooms/{}'.format(listing['listing']['id']), params)
-            yield scrapy.Request(url, callback=self._parse_listing_contents)
+            yield self._listing_api_request(listing, params)
 
     def parse_landing_page(self, response):
         """Parse search response and generate URLs for all searches, then perform them."""
@@ -242,15 +246,19 @@ class BnbSpider(scrapy.Spider):
 
         return params
 
+    def _listing_api_request(self, listing, params):
+        url = self._build_airbnb_url('/api/v2/pdp_listing_details/{}'.format(listing['listing']['id']), params)
+        return scrapy.Request(url, callback=self._parse_listing_contents)
+
     def _parse_listing_contents(self, response):
         """Obtain data from an individual listing page."""
-        xpath_match = response.xpath('//script[@id="data-state"]/text()').extract()[0]
-        data = json.loads(xpath_match)
-        listing = data['bootstrapData']['reduxData']['homePDP']['listingInfo']['listing']
+        data = self.read_data(response)
+        listing = data['pdp_listing_detail']
+        listing_id = listing['id']
 
         # item['person_capacity'] = listing['p3_event_data_logging']['person_capacity']
         item = DeepbnbItem(
-            id=listing["id"],
+            id=listing_id,
             access=listing['sectioned_description']['access'],
             additional_house_rules=listing['additional_house_rules'],
             allows_events=listing['guest_controls']['allows_events'],
@@ -264,15 +272,16 @@ class BnbSpider(scrapy.Spider):
             latitude=listing['lat'],
             longitude=listing['lng'],
             min_nights=listing['min_nights'],
-            monthly_price_factor=self._data_cache[listing['id']]['monthly_price_factor'],
-            name='=HYPERLINK("{}", "{}")'.format(response.url, listing.get('name', response.url)),
+            monthly_price_factor=self._data_cache[listing_id]['monthly_price_factor'],
+            name='=HYPERLINK("https://www.airbnb.com/rooms/{}", "{}")'.format(
+                listing_id, listing.get('name', listing_id)),
             # neighborhood=listing['neighborhood'],
             neighborhood_overview=listing['sectioned_description']['neighborhood_overview'],
             # new_listing=listing['is_new_listing'],
             notes=listing['sectioned_description']['notes'],
             person_capacity=listing['person_capacity'],
-            price_rate=self._data_cache[listing["id"]]['price_rate'],
-            price_rate_type=self._data_cache[listing["id"]]['price_rate_type'],
+            price_rate=self._data_cache[listing_id]['price_rate'],
+            price_rate_type=self._data_cache[listing_id]['price_rate_type'],
             # property_type=listing['property_type_id'],
             rating_accuracy=listing['p3_event_data_logging']['accuracy_rating'],
             rating_checkin=listing['p3_event_data_logging']['checkin_rating'],
@@ -291,12 +300,12 @@ class BnbSpider(scrapy.Spider):
             star_rating=listing['star_rating'],
             # superhost=listing['is_superhost'],
             tier_id=listing['tier_id'],
-            total_price=self._data_cache[listing['id']]['total_price'],
-            url=response.url,
+            total_price=self._data_cache[listing_id]['total_price'],
+            url="https://www.airbnb.com/rooms/{}".format(listing['id']),
             user_id=listing['user']['id'],
             # user_name=listing['user']['first_name'],
             # verified=listing['verified_card'],
-            weekly_price_factor=self._data_cache[listing['id']]['weekly_price_factor']
+            weekly_price_factor=self._data_cache[listing_id]['weekly_price_factor']
         )
         # if listing['price_interface']['cleaning_fee']:
         #     item['cleaning_fee'] = listing['price_interface']['cleaning_fee']['value']
