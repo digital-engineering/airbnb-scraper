@@ -1,24 +1,32 @@
 # Airbnb Scraper: Advanced Airbnb Search using Scrapy 
 
-## Disclaimer
+Use Airbnb's unofficial API to efficiently search for rental properties. 
+Automatically open matching properties in a browser, and save matching properties in a CSV.
 
-**Accessing Airbnb's unofficial API endpoints may violate their terms of service. This project is to be used for 
-educational purposes only.**
+## Installation (linux/bsd)
+
+    # Create venv
+    python3 -m venv env
+    
+    # Enable venv
+    . env/bin/activate
+    
+    # Install required packages
+    pip install -Ur requirements.txt
 
 ## Example Usage
 
 #### Minimal scraper usage:
 
-    scrapy crawl bnb
+    scrapy crawl bnb -a query="Colorado Springs, CO" -o colorado_springs.csv
     
 #### Advanced command line options:
 
 ```
 scrapy crawl bnb \
-    -a city=Madrid \
-    -a country=Spain \
-    -a check_in=10/04/2016 \
-    -a check_out=11/01/2016 \
+    -a query="Madrid, Spain" \
+    -a check_in=10/01/2020 \
+    -a check_out=11/31/2020 \
     -a max_price=1900 \
     -a min_price=1800 \
     -a neighborhoods="Acacias,Almagro,Arganzuela,Argüelles,Centro,Cortes,Embajadores,Imperial,Jerónimos,La Latina,Malasaña,Moncloa,Palacio,Recoletos,Retiro,Salamanca,Sol" \
@@ -49,16 +57,15 @@ filtering, sorting, and inspection.
 You can find the values for these by first doing a search manually on the 
 Airbnb site. 
 
-* `city`, `state`: City and State to search. **(required)** 
-* `check_in`, `check_out`: Check-in and Check-out dates. **(required)** 
-* `min_price`, `max_price`: Minimum and maximum price for the period. **(required)**  
-  *The Airbnb search algorithm seems to scale this based upon search length. So 
-  it will be either the daily or monthly price, depending on the length of the 
-  stay.*
+* `query`: City and State to search. **(required)** 
+* `check_in`, `check_out`: Check-in and Check-out dates.
+* `min_price`, `max_price`: Minimum and maximum price for the period.
+  *The Airbnb search algorithm calculates this based upon search length. 
+  It will be either the daily or monthly price, depending on the length
+  of the stay.*
 * `neighborhoods`: Comma-separated list of neighborhoods within the city
-  to filter for. **(optional)**
-* `output`: Name of output file. Only xlsx output is tested. 
-  **(optional)**
+  to filter for.
+* `output`: Name of output file. Only xlsx output is tested.
 
 ## Settings
 
