@@ -3,7 +3,7 @@
 Use Airbnb's unofficial API to efficiently search for rental properties. 
 Regex matching, open matched properties in a browser, and save to csv/xlsx.
 
-## Installation (linux/bsd)
+## Installation (nix)
 
     # Create venv
     python3 -m venv env
