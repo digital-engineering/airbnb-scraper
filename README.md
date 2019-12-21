@@ -1,11 +1,5 @@
-# Nomad Airbnb: Airbnb advanced search for digital nomads using Scrapy 
+# Airbnb Scraper: Advanced Airbnb Search using Scrapy 
 
-## Intro
-
-Airbnb's search is pretty good, but sometimes I find it lacking. For instance, you 
-can't do a full text search, and they limit you to 300 results per search which means 
-it is a chore to see their entire inventory.
- 
 ## Disclaimer
 
 **Accessing Airbnb's unofficial API endpoints may violate their terms of service. This project is to be used for 
