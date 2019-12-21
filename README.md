@@ -1,7 +1,7 @@
 # Airbnb Scraper: Advanced Airbnb Search using Scrapy 
 
 Use Airbnb's unofficial API to efficiently search for rental properties. 
-Automatically open matching properties in a browser, and save matching properties in a CSV.
+Regex matching, open matched properties in a browser, and save to csv/xlsx.
 
 ## Installation (linux/bsd)
 
