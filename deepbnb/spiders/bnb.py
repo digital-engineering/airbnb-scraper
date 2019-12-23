@@ -207,6 +207,12 @@ class BnbSpider(scrapy.Spider):
         if params:
             query.update(params)
 
+        if self.settings.get('PROPERTY_AMENITIES'):
+            amenities = self.settings.get('PROPERTY_AMENITIES').values()
+            query = list(query.items())  # convert dict to list of tuples because we need multiple identical keys
+            for a in amenities:
+                query.append(('amenities[]', a))
+
         return self._build_airbnb_url(self._api_path, query)
 
     @staticmethod
@@ -247,10 +253,11 @@ class BnbSpider(scrapy.Spider):
     @staticmethod
     def _get_neighborhoods(data):
         """Get all neighborhoods in an area if they exist."""
-        meta = data['explore_tabs'][0]['home_tab_metadata']
-        facets = meta['facets'].get('neighborhood_facet', [])
-
         neighborhoods = {}
+        meta = data['explore_tabs'][0]['home_tab_metadata']
+        if meta['listings_count'] < 300:
+            return neighborhoods
+
         for section in meta['filters']['sections']:
             if section['filter_section_id'] != 'neighborhoods':
                 continue

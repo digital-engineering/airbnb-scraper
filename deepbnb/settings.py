@@ -125,6 +125,16 @@ FEED_EXPORT_FIELDS = [
 # Minimum photos per listing
 MINIMUM_PHOTOS = 2
 
+# Desired hosting amenities and corresponding IDs. Determined by observing search GET parameters.
+PROPERTY_AMENITIES = {
+    # 'a/c':     5,
+    'kitchen': 8,
+    'tv':      58,
+    'washer':  33,
+    'dryer':   34,
+    'wifi':    4,
+}
+
 # Blacklisted property types
 PROPERTY_TYPE_BLACKLIST = ['Camper/RV', 'Campsite', 'Entire guest suite']
 
