@@ -25,8 +25,8 @@ Regex matching, open matched properties in a browser, and save to csv/xlsx.
 ```
 scrapy crawl bnb \
     -a query="Madrid, Spain" \
-    -a check_in=10/01/2020 \
-    -a check_out=11/31/2020 \
+    -a checkin=10/01/2020 \
+    -a checkout=11/31/2020 \
     -a max_price=1900 \
     -a min_price=1800 \
     -a neighborhoods="Acacias,Almagro,Arganzuela,Argüelles,Centro,Cortes,Embajadores,Imperial,Jerónimos,La Latina,Malasaña,Moncloa,Palacio,Recoletos,Retiro,Salamanca,Sol" \
@@ -58,7 +58,7 @@ You can find the values for these by first doing a search manually on the
 Airbnb site. 
 
 * `query`: City and State to search. **(required)** 
-* `check_in`, `check_out`: Check-in and Check-out dates.
+* `checkin`, `checkout`: Check-in and Check-out dates.
 * `min_price`, `max_price`: Minimum and maximum price for the period.
   *The Airbnb search algorithm calculates this based upon search length. 
   It will be either the daily or monthly price, depending on the length
@@ -93,6 +93,10 @@ command line using the `-s` flag as in the example above.
   Only accept listings that match the given regex pattern. 
   **(optional)**
 
+* `PROPERTY_TYPE_BLACKLIST=['Camper/RV', 'Campsite', 'Entire guest suite']`  
+  Property Types to filter. 
+  **(optional)**
+
 * `WEB_BROWSER="/path/to/browser %s"`  
   Web browser executable command. **(optional)**  
     
@@ -115,6 +119,7 @@ command line using the `-s` flag as in the example above.
 
 ## Credits
 
-This project was originally inspired by 
-[this excellent blog post](http://www.verginer.eu/blog/web-scraping-airbnb/) 
-by Luca Verginer.
+- This project was originally inspired by [this excellent blog post](http://www.verginer.eu/blog/web-scraping-airbnb/) 
+  by Luca Verginer.
+- In converting this to use the unofficial API, https://stevesie.com/apps/airbnb-api was very helpful.
+- [This analysis of Bali Airbnbs](https://github.com/daben/m2851-prac1) provided inspiration for more eloquent code.

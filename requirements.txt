@@ -13,7 +13,7 @@ jdcal==1.4.1
 lxml==4.4.2
 openpyxl==3.0.2
 parsel==1.5.2
-Protego==0.1.15
+Protego==0.1.16
 pyasn1==0.4.8
 pyasn1-modules==0.2.7
 pycparser==2.19

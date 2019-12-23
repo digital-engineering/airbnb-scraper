@@ -17,6 +17,7 @@ NEWSPIDER_MODULE = 'deepbnb.spiders'
 #
 # Scraper config
 #
+
 # Public development key
 AIRBNB_API_KEY = 'd306zoyjsyarp7ifhu67rjxn52tv0t20'
 
@@ -25,7 +26,11 @@ USER_AGENT = 'deepbnb (+https://digitalengineering.io)'
 
 # Obey robots.txt rules
 ROBOTSTXT_OBEY = True
+
+# https://docs.python.org/3/library/webbrowser.html
+# Open results in web browser
 # WEB_BROWSER = 'chromium'
+
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
 # CONCURRENT_REQUESTS = 32
 
@@ -41,7 +46,7 @@ CONCURRENT_REQUESTS_PER_DOMAIN = 10
 # COOKIES_ENABLED = False
 
 # Disable Telnet Console (enabled by default)
-# TELNETCONSOLE_ENABLED = False
+TELNETCONSOLE_ENABLED = False
 
 # Override the default request headers:
 # DEFAULT_REQUEST_HEADERS = {
@@ -67,54 +72,72 @@ ITEM_PIPELINES = {
     'deepbnb.pipelines.AirbnbScraperPipeline': 300,
 }
 
+# https://docs.scrapy.org/en/latest/topics/feed-exports.html
 FEED_EXPORTERS = {
     'xlsx': 'deepbnb.exporter.AirbnbExcelItemExporter',
 }
-FIELDS_TO_EXPORT = [
+
+FEED_EXPORT_FIELDS = [
     'name',
-    'price',
-    'nightly_price',
-    #    'calendar_updated_at',
-    #    'min_nights',
-    #    'url',
+    'url',
+    'price_rate',
+    'price_rate_type',
+    'total_price',
+    'room_and_property_type',
+    'min_nights',
+    'max_nights',
+    'latitude',
+    'longitude',
+    'monthly_price_factor',
+    'weekly_price_factor',
+    'room_type',
+    'person_capacity',
     'summary',
-    'description',
-    'space',
+    'amenities',
+    'review_count',
+    'review_score',
+    'calendar_updated_at',
+    'rating_accuracy',
+    'rating_checkin',
+    'rating_cleanliness',
+    'rating_communication',
+    'rating_location',
+    'rating_value',
+    'star_rating',
     'satisfaction_guest',
-    'accuracy_rating',
-    #    'amenities',
+    'description',
+    'neighborhood_overview',
+    'notes',
+    'additional_house_rules',
+    'interaction',
     'access',
-    'house_rules',
+    'transit',
     'response_rate',
     'response_time',
-    'notes',
-    #    'cancel_policy',
-    #    'host_id',
-    #    'hosting_id',
-    #    'instant_book',
-    #    'interaction',
-    'neighborhood_overview',
-    #    'rating_checkin',
-    #    'rating_cleanliness',
-    #    'rating_communication',
-    #    'review_count',
-    #    'reviews',
-    #    'room_type',
-    #    'person_capacity',
-    #    'transit',
-    #    'bed_type',
 ]
 
-MINIMUM_MONTHLY_DISCOUNT = 0  # percent
-MINIMUM_WEEKLY_DISCOUNT = 0  # percent
+# Minimum monthly discount percent
+# MINIMUM_MONTHLY_DISCOUNT = 0
+
+# Minimum weekly discount percent
+# MINIMUM_WEEKLY_DISCOUNT = 0
+
+# Minimum photos per listing
+MINIMUM_PHOTOS = 2
+
+# Blacklisted property types
+PROPERTY_TYPE_BLACKLIST = ['Camper/RV', 'Campsite', 'Entire guest suite']
 
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See http://doc.scrapy.org/en/latest/topics/autothrottle.html
 AUTOTHROTTLE_ENABLED = True
+
 # The initial download delay
 AUTOTHROTTLE_START_DELAY = 5
+
 # The maximum download delay to be set in case of high latencies
 AUTOTHROTTLE_MAX_DELAY = 60
+
 # The average number of requests Scrapy should be sending in parallel to
 # each remote server
 # AUTOTHROTTLE_TARGET_CONCURRENCY = 1.0

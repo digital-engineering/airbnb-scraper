@@ -13,7 +13,17 @@ class BnbSpider(scrapy.Spider):
     price_range = (0, 2000, 10)
     page_limit = 20
 
-    def __init__(self, query, currency=default_currency, checkin=None, checkout=None, **kwargs):
+    def __init__(
+            self,
+            query,
+            checkin=None,
+            checkout=None,
+            currency=default_currency,
+            max_price=None,
+            min_price=None,
+            **kwargs
+    ):
+        """Class constructor."""
         super().__init__(**kwargs)
         self._api_path = "/api/v2/explore_tabs"
         self._api_key = None
@@ -22,6 +32,8 @@ class BnbSpider(scrapy.Spider):
         self._currency = currency
         self._data_cache = {}
         self._geography = {}
+        self._max_price = max_price
+        self._min_price = min_price
         self._neighborhoods = {}
         self._place = query
         self._search_params = {}
@@ -33,7 +45,6 @@ class BnbSpider(scrapy.Spider):
 
     @staticmethod
     def iterate_prices(price_range):
-        # Iterate prices
         price_range_min, price_range_max, price_inc = price_range
         price_range_min = max(price_range_min, 0)
         price_range_max = max(price_range_max, price_range_min + price_inc)
@@ -49,6 +60,7 @@ class BnbSpider(scrapy.Spider):
             yield params
 
     def parse(self, response):
+        """Default parse method."""
         data = self.read_data(response)
         tab = data['explore_tabs'][0]
 
@@ -67,8 +79,14 @@ class BnbSpider(scrapy.Spider):
         }
 
         if self._checkin:
-            params['check_in'] = self._checkin
-            params['check_out'] = self._checkout
+            params['checkin'] = self._checkin
+            params['checkout'] = self._checkout
+
+        if self._max_price:
+            params['price_max'] = self._max_price
+
+        if self._min_price:
+            params['price_min'] = self._min_price
 
         listings = self._get_listings_from_sections(tab['sections'])
         for listing in listings:  # request each property page
@@ -87,7 +105,6 @@ class BnbSpider(scrapy.Spider):
         self.logger.info(f"Geography:\n{self._geography}")
         self.logger.info(f"Neighborhoods:\n{self._neighborhoods}")
 
-        # Iterate area
         if self._neighborhoods:  # iterate by neighborhood
             for neighborhood in self.iterate_neighborhoods(self._neighborhoods.values()):
                 for price in self.iterate_prices(self.price_range):
@@ -101,17 +118,21 @@ class BnbSpider(scrapy.Spider):
             yield self._api_request(params=params, response=response, callback=self.parse)
 
     def read_data(self, response):
+        """Read response data as json"""
         self.logger.debug(f"Parsing {response.url}")
         data = json.loads(response.body)
         return data
 
     def start_requests(self):
-        """Generate the first search request."""
+        """Application entry point. Generate the first search request."""
         self.logger.info(f"starting survey for: {self._place}")
         params = {}
         if self._checkin:
             params['checkin'] = self._checkin
             params['checkout'] = self._checkout
+
+        if self._max_price:
+            params['price_max'] = self._max_price
 
         yield self._api_request(params, callback=self.parse_landing_page)
 
@@ -156,6 +177,7 @@ class BnbSpider(scrapy.Spider):
             'query':                         self._place,
             'query_understanding_enabled':   'true',
             'refinement_paths[]':            '/homes',
+            'room_types[]':                  'Entire home/apt',
             'satori_version':                '1.2.0',
             # 'section_offset': '0',
             'screen_height':                 635,
@@ -176,6 +198,7 @@ class BnbSpider(scrapy.Spider):
     def _build_airbnb_url(path, query=None):
         if query is not None:
             query = urlencode(query)
+
         parts = ['https', 'www.airbnb.com', path, None, query, None]
         return urlunparse(parts)
 
@@ -194,8 +217,8 @@ class BnbSpider(scrapy.Spider):
                 self._data_cache[listing_id]['weekly_price_factor'] = pricing['weekly_price_factor']
 
                 if self._checkin:  # use total price if dates given, price rate otherwise
-                    self._data_cache[listing_id]['price_rate'] = None
-                    self._data_cache[listing_id]['price_rate_type'] = None
+                    self._data_cache[listing_id]['price_rate'] = pricing['rate_with_service_fee']['amount']
+                    self._data_cache[listing_id]['price_rate_type'] = pricing['rate_type']
                     self._data_cache[listing_id]['total_price'] = pricing['price']['total']['amount']
                 else:
                     self._data_cache[listing_id]['price_rate'] = pricing['rate_with_service_fee']['amount']
@@ -208,6 +231,7 @@ class BnbSpider(scrapy.Spider):
 
     @staticmethod
     def _get_neighborhoods(data):
+        """Get all neighborhoods in an area if they exist."""
         meta = data['explore_tabs'][0]['home_tab_metadata']
         facets = meta['facets'].get('neighborhood_facet', [])
 
@@ -226,8 +250,8 @@ class BnbSpider(scrapy.Spider):
 
         return neighborhoods
 
-    @staticmethod
-    def _get_search_params(data):
+    def _get_search_params(self, data):
+        """Consolidate search parameters and return result."""
         tab = data['explore_tabs'][0]
         pagination = tab['pagination_metadata']
         metadata = tab['home_tab_metadata']
@@ -236,17 +260,26 @@ class BnbSpider(scrapy.Spider):
         params = {
             'federated_search_session_id':
                 data['metadata']['federated_search_session_id'],
-            'last_search_session_id':
-                pagination['search_session_id'],
             'place_id':
                 geography['place_id'],
             'query':
                 location['canonical_location']
         }
 
+        if pagination['has_next_page']:
+            params['last_search_session_id'] = pagination['search_session_id']
+
+        if self._checkin:
+            params['checkin'] = self._checkin
+            params['checkout'] = self._checkout
+
+        if self._max_price:
+            params['price_max'] = self._max_price
+
         return params
 
     def _listing_api_request(self, listing, params):
+        """Generate scrapy.Request for single listing."""
         url = self._build_airbnb_url('/api/v2/pdp_listing_details/{}'.format(listing['listing']['id']), params)
         return scrapy.Request(url, callback=self._parse_listing_contents)
 
@@ -254,7 +287,7 @@ class BnbSpider(scrapy.Spider):
         """Obtain data from an individual listing page."""
         data = self.read_data(response)
         listing = data['pdp_listing_detail']
-        listing_id = listing['id']
+        listing_id = listing['id']  # photos?
 
         # item['person_capacity'] = listing['p3_event_data_logging']['person_capacity']
         item = DeepbnbItem(
@@ -263,57 +296,50 @@ class BnbSpider(scrapy.Spider):
             additional_house_rules=listing['additional_house_rules'],
             allows_events=listing['guest_controls']['allows_events'],
             amenities=','.join([la['name'] for la in listing['listing_amenities']]),
+            bathrooms=listing.get('bathrooms', listing['bathroom_label']),
+            bedrooms=listing.get('bedrooms', listing['bedroom_label']),
+            beds=listing.get('beds', listing['bed_label']),
             business_travel_ready=listing['is_business_travel_ready'],
+            calendar_updated_at=listing['calendar_last_updated_at'],
             city=listing['localized_city'],
-            description=listing['sectioned_description']['summary'],
+            description=listing['sectioned_description']['description'],
             host_id=listing['primary_host']['id'],
-            # host_languages=listing['host_languages'],
+            house_rules=listing['sectioned_description']['house_rules'],
             is_hotel=listing['is_hotel'],
             latitude=listing['lat'],
             longitude=listing['lng'],
+            max_nights=listing.get('max_nights'),
             min_nights=listing['min_nights'],
             monthly_price_factor=self._data_cache[listing_id]['monthly_price_factor'],
-            name='=HYPERLINK("https://www.airbnb.com/rooms/{}", "{}")'.format(
-                listing_id, listing.get('name', listing_id)),
-            # neighborhood=listing['neighborhood'],
+            name=listing.get('name', listing_id),
             neighborhood_overview=listing['sectioned_description']['neighborhood_overview'],
-            # new_listing=listing['is_new_listing'],
             notes=listing['sectioned_description']['notes'],
             person_capacity=listing['person_capacity'],
+            photo_count=len(listing['photos']),
             price_rate=self._data_cache[listing_id]['price_rate'],
             price_rate_type=self._data_cache[listing_id]['price_rate_type'],
-            # property_type=listing['property_type_id'],
             rating_accuracy=listing['p3_event_data_logging']['accuracy_rating'],
             rating_checkin=listing['p3_event_data_logging']['checkin_rating'],
             rating_cleanliness=listing['p3_event_data_logging']['cleanliness_rating'],
             rating_communication=listing['p3_event_data_logging']['communication_rating'],
             rating_location=listing['p3_event_data_logging']['location_rating'],
             rating_value=listing['p3_event_data_logging']['value_rating'],
-            # refundable=listing['is_fully_refundable'],
             response_rate=listing['p3_event_data_logging']['response_rate_shown'],
             response_time=listing['p3_event_data_logging']['response_time_shown'],
             review_count=listing['review_details_interface']['review_count'],
             review_score=listing['review_details_interface']['review_score'],
-            # reviews=listing['review_details_interface']['reviews'],
+            room_and_property_type=listing['room_and_property_type'],
             room_type=listing['room_type_category'],
             satisfaction_guest=listing['p3_event_data_logging']['guest_satisfaction_overall'],
             star_rating=listing['star_rating'],
-            # superhost=listing['is_superhost'],
+            summary=listing['sectioned_description']['summary'],
             tier_id=listing['tier_id'],
             total_price=self._data_cache[listing_id]['total_price'],
+            transit=listing['sectioned_description']['transit'],
             url="https://www.airbnb.com/rooms/{}".format(listing['id']),
             user_id=listing['user']['id'],
-            # user_name=listing['user']['first_name'],
-            # verified=listing['verified_card'],
             weekly_price_factor=self._data_cache[listing_id]['weekly_price_factor']
         )
-        # if listing['price_interface']['cleaning_fee']:
-        #     item['cleaning_fee'] = listing['price_interface']['cleaning_fee']['value']
-        # item['house_rules'] = listing['house_rules']
-        # item['price'] = listing['p3_event_data_logging']['price']
-        # item['search_price'] = response.meta['search_price']
-        # item['space'] = listing['space_interface']
-        # item['summary'] = listing['summary']
         # item['reviews'] = data['bootstrapData']['reduxData']['homePDP'].get('reviewsInfo', {}).get(
         #     'cumulativeReviews')
 
@@ -322,5 +348,9 @@ class BnbSpider(scrapy.Spider):
 
         if 'interaction' in listing['sectioned_description']:
             item['interaction'] = listing['sectioned_description']['interaction']
+
+        if True:  # code for creating links in XLSX files, but need to fix that conditional
+            item['name'] = '=HYPERLINK("https://www.airbnb.com/rooms/{}", "{}")'.format(
+                listing_id, listing.get('name', listing_id)),
 
         return item
