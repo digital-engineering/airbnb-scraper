@@ -10,7 +10,9 @@ class BnbSpider(scrapy.Spider):
     name = 'bnb'
     allowed_domains = ['airbnb.com']
     default_currency = 'USD'
-    price_range = (0, 2000, 10)
+    default_max_price = 3000
+    default_price_increment = 100
+    price_range = (0, default_max_price, default_price_increment)
     page_limit = 20
 
     def __init__(
@@ -32,11 +34,24 @@ class BnbSpider(scrapy.Spider):
         self._currency = currency
         self._data_cache = {}
         self._geography = {}
-        self._max_price = max_price
-        self._min_price = min_price
         self._neighborhoods = {}
         self._place = query
         self._search_params = {}
+
+        self._max_price = max_price
+        self._min_price = min_price
+        if self._min_price and self._max_price:
+            self._max_price = int(self._max_price)
+            self._min_price = int(self._min_price)
+            self.price_range = (self._min_price, self._max_price, self.default_price_increment)
+
+        if self._min_price and not self._max_price:
+            self._min_price = int(self._min_price)
+            self.price_range = (self._min_price, self.default_max_price, self.default_price_increment)
+
+        if not self._min_price and self._max_price:
+            self._max_price = int(self._max_price)
+            self.price_range = (0, self._max_price, self.default_price_increment)
 
     @staticmethod
     def iterate_neighborhoods(neighborhoods):
@@ -236,17 +251,16 @@ class BnbSpider(scrapy.Spider):
         facets = meta['facets'].get('neighborhood_facet', [])
 
         neighborhoods = {}
-        for item in facets:
-            neighborhoods[item['key']] = item
-
         for section in meta['filters']['sections']:
-            if section['filter_section_id'] == 'neighborhoods':
-                for item in section['items']:
-                    key = item['title']
-                    for param in item['params']:
-                        if param['key'] == 'neighborhood_ids':
-                            neighborhoods[key]['id'] = param['value']
-                            break
+            if section['filter_section_id'] != 'neighborhoods':
+                continue
+            for item in section['items']:
+                key = item['title']
+                neighborhoods[key] = item
+                for param in item['params']:
+                    if param['key'] == 'neighborhood_ids':
+                        neighborhoods[key]['id'] = param['value']
+                        break
 
         return neighborhoods
 
