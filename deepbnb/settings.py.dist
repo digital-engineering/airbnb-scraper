@@ -80,6 +80,7 @@ TELNETCONSOLE_ENABLED = False
 # See http://scrapy.readthedocs.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
     'deepbnb.pipelines.BnbPipeline': 300,
+    #    'deepbnb.pipelines.ElasticBnbPipeline': 301 # enable if you want to pipeline results to elasticsearch
 }
 
 # https://docs.scrapy.org/en/latest/topics/feed-exports.html

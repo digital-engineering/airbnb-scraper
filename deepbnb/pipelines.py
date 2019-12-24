@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
+import elasticsearch.exceptions
 import re
 import webbrowser
 
+from deepbnb.model import Listing
 from scrapy.exceptions import DropItem
 
 
@@ -94,3 +96,66 @@ class BnbPipeline:
             self._web_browser.open_new_tab(item['url'])
 
         return item
+
+
+class ElasticBnbPipeline:
+    def process_item(self, item, spider):
+        """Insert / update items in ElasticSearch."""
+        properties = {
+            'access':                 item['access'],
+            'additional_house_rules': item['additional_house_rules'],
+            'allows_events':          item['allows_events'],
+            'amenities':              list(item['amenities'].values()),
+            'amenity_ids':            list(item['amenities'].keys()),
+            'bathrooms':              item['bathrooms'],
+            'bedrooms':               item['bedrooms'],
+            'beds':                   item['beds'],
+            'business_travel_ready':  item['business_travel_ready'],
+            'city':                   item['city'],
+            'country':                item['country'],
+            'country_code':           item['country_code'],
+            'coordinates':            {'lon': item['longitude'], 'lat': item['latitude']},
+            'description':            item['description'],
+            'host_id':                item['host_id'],
+            'house_rules':            item['house_rules'],
+            'interaction':            item.get('interaction'),
+            'is_hotel':               item['is_hotel'],
+            'max_nights':             item['max_nights'],
+            'min_nights':             item['min_nights'],
+            'monthly_price_factor':   item['monthly_price_factor'],
+            'name':                   item['name'],
+            'neighborhood_overview':  item['neighborhood_overview'],
+            'notes':                  item['notes'],
+            'person_capacity':        item['person_capacity'],
+            'photo_count':            item['photo_count'],
+            'place_id':               item['place_id'],
+            'price_rate':             item['price_rate'],
+            'price_rate_type':        item['price_rate_type'],
+            'province':               item['province'],
+            'rating_accuracy':        item['rating_accuracy'],
+            'rating_checkin':         item['rating_checkin'],
+            'rating_cleanliness':     item['rating_cleanliness'],
+            'rating_communication':   item['rating_communication'],
+            'rating_location':        item['rating_location'],
+            'rating_value':           item['rating_value'],
+            'review_count':           item['review_count'],
+            'review_score':           item['review_score'],
+            'room_and_property_type': item['room_and_property_type'],
+            'room_type':              item['room_type'],
+            'satisfaction_guest':     item['satisfaction_guest'],
+            'star_rating':            item['star_rating'],
+            'state':                  item['state'],
+            'state_short':            item['state_short'],
+            'summary':                item['summary'],
+            'transit':                item['transit'],
+            'url':                    item['url'],
+            'weekly_price_factor':    item['weekly_price_factor']
+        }
+
+        try:
+            listing = Listing.get(id=item['id'])
+            listing.update(**properties)
+        except elasticsearch.exceptions.NotFoundError:
+            properties['meta'] = {'id': item['id']}
+            listing = Listing(**properties)
+            listing.save()
