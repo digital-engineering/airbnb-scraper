@@ -5,7 +5,7 @@ import webbrowser
 from scrapy.exceptions import DropItem
 
 
-class AirbnbScraperPipeline:
+class BnbPipeline:
 
     @classmethod
     def from_crawler(cls, crawler):

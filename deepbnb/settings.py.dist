@@ -18,8 +18,18 @@ NEWSPIDER_MODULE = 'deepbnb.spiders'
 # Scraper config
 #
 
-# Public development key
-AIRBNB_API_KEY = 'd306zoyjsyarp7ifhu67rjxn52tv0t20'
+# Need to create a postgresql database to use this, see http://newcoder.io/scrape/part-3/
+# DATABASE = {
+#     'drivername': 'postgres',
+#     'host':       'localhost',
+#     'port':       '5432',
+#     'username':   'postgres',
+#     'password':   '',
+#     'database':   'scrape'
+# }
+
+# Public development key (get this from the 'key' url parameter in async requests to /api/v2/explore_tabs)
+AIRBNB_API_KEY = ''
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 USER_AGENT = 'deepbnb (+https://digitalengineering.io)'
@@ -69,7 +79,7 @@ TELNETCONSOLE_ENABLED = False
 # Configure item pipelines
 # See http://scrapy.readthedocs.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
-    'deepbnb.pipelines.AirbnbScraperPipeline': 300,
+    'deepbnb.pipelines.BnbPipeline': 300,
 }
 
 # https://docs.scrapy.org/en/latest/topics/feed-exports.html

@@ -58,5 +58,4 @@ class DeepbnbItem(scrapy.Item):
     total_price = scrapy.Field()
     transit = scrapy.Field()
     url = scrapy.Field()
-    user_id = scrapy.Field()
     weekly_price_factor = scrapy.Field()

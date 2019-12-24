@@ -358,7 +358,6 @@ class BnbSpider(scrapy.Spider):
             total_price=self._data_cache[listing_id]['total_price'],
             transit=listing['sectioned_description']['transit'],
             url="https://www.airbnb.com/rooms/{}".format(listing['id']),
-            user_id=listing['user']['id'],
             weekly_price_factor=self._data_cache[listing_id]['weekly_price_factor']
         )
         # item['reviews'] = data['bootstrapData']['reduxData']['homePDP'].get('reviewsInfo', {}).get(

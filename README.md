@@ -13,6 +13,14 @@ Regex matching, open matched properties in a browser, and save to csv/xlsx.
     
     # Install required packages
     pip install -Ur requirements.txt
+    
+    # Create settings.py
+    cp deepbnb/settings.py.dist deepbnb/settings.py
+    
+    # Don't forget to set AIRBNB_API_KEY in settings.py. To find your API key, 
+    # do a manual search on Airbnb, and look for to the 'key' url parameter in 
+    # async requests to /api/v2/explore_tabs in your browser's dev tools under
+    # the Network tab.
 
 ## Example Usage
 
