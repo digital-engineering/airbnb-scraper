@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import json
+import re
 import scrapy
 
 from deepbnb.items import DeepbnbItem
@@ -27,7 +28,6 @@ class BnbSpider(scrapy.Spider):
     ):
         """Class constructor."""
         super().__init__(**kwargs)
-        self._api_path = "/api/v2/explore_tabs"
         self._api_key = None
         self._checkin = checkin
         self._checkout = checkout
@@ -152,6 +152,7 @@ class BnbSpider(scrapy.Spider):
         yield self._api_request(params, callback=self.parse_landing_page)
 
     def _api_request(self, params=None, response=None, callback=None):
+        """Perform API request."""
         if response:
             request = response.follow
         else:
@@ -159,61 +160,7 @@ class BnbSpider(scrapy.Spider):
 
         callback = callback or self.parse
 
-        return request(self._api_url(params), callback)
-
-    def _api_url(self, params=None):
-        if self._api_key is None:
-            self._api_key = self.settings.get("AIRBNB_API_KEY")
-
-        query = {
-            '_format':                       'for_explore_search_web',
-            'auto_ib':                       'true',  # was false?
-            'currency':                      self._currency,
-            'current_tab_id':                'home_tab',
-            'experiences_per_grid':          '20',
-            # 'federated_search_session_id': '',
-            'fetch_filters':                 'true',
-            'guidebooks_per_grid':           '20',
-            'has_zero_guest_treatment':      'false',
-            'hide_dates_and_guests_filters': 'false',
-            'is_guided_search':              'true',
-            'is_new_cards_experiment':       'true',
-            'is_standard_search':            'true',
-            # 'items_offset': '0',
-            'items_per_grid':                '50',
-            'key':                           self._api_key,
-            # 'last_search_session_id': '',
-            'locale':                        'en',
-            'metadata_only':                 'false',
-            # 'neighborhood_ids[]': ,
-            # 'place_id': '',
-            # 'price_max': None,
-            # 'price_min': 10,
-            'query':                         self._place,
-            'query_understanding_enabled':   'true',
-            'refinement_paths[]':            '/homes',
-            'room_types[]':                  'Entire home/apt',
-            'satori_version':                '1.2.0',
-            # 'section_offset': '0',
-            'screen_height':                 635,
-            'screen_size':                   'large',
-            'screen_width':                  2040,
-            'show_groupings':                'true',
-            'supports_for_you_v3':           'true',
-            'timezone_offset':               '-480',
-            'version':                       '1.6.5'
-        }
-
-        if params:
-            query.update(params)
-
-        if self.settings.get('PROPERTY_AMENITIES'):
-            amenities = self.settings.get('PROPERTY_AMENITIES').values()
-            query = list(query.items())  # convert dict to list of tuples because we need multiple identical keys
-            for a in amenities:
-                query.append(('amenities[]', a))
-
-        return self._build_airbnb_url(self._api_path, query)
+        return request(self._get_search_api_url(params), callback)
 
     @staticmethod
     def _build_airbnb_url(path, query=None):
@@ -271,6 +218,61 @@ class BnbSpider(scrapy.Spider):
 
         return neighborhoods
 
+    def _get_search_api_url(self, params=None):
+        _api_path = '/api/v2/explore_tabs'
+        if self._api_key is None:
+            self._api_key = self.settings.get("AIRBNB_API_KEY")
+
+        query = {
+            '_format':                       'for_explore_search_web',
+            'auto_ib':                       'true',  # was false?
+            'currency':                      self._currency,
+            'current_tab_id':                'home_tab',
+            'experiences_per_grid':          '20',
+            # 'federated_search_session_id': '',
+            'fetch_filters':                 'true',
+            'guidebooks_per_grid':           '20',
+            'has_zero_guest_treatment':      'false',
+            'hide_dates_and_guests_filters': 'false',
+            'is_guided_search':              'true',
+            'is_new_cards_experiment':       'true',
+            'is_standard_search':            'true',
+            # 'items_offset': '0',
+            'items_per_grid':                '50',
+            'key':                           self._api_key,
+            # 'last_search_session_id': '',
+            'locale':                        'en',
+            'metadata_only':                 'false',
+            # 'neighborhood_ids[]': ,
+            # 'place_id': '',
+            # 'price_max': None,
+            # 'price_min': 10,
+            'query':                         self._place,
+            'query_understanding_enabled':   'true',
+            'refinement_paths[]':            '/homes',
+            'room_types[]':                  'Entire home/apt',
+            'satori_version':                '1.2.0',
+            # 'section_offset': '0',
+            'screen_height':                 635,
+            'screen_size':                   'large',
+            'screen_width':                  2040,
+            'show_groupings':                'true',
+            'supports_for_you_v3':           'true',
+            'timezone_offset':               '-480',
+            'version':                       '1.6.5'
+        }
+
+        if params:
+            query.update(params)
+
+        if self.settings.get('PROPERTY_AMENITIES'):
+            amenities = self.settings.get('PROPERTY_AMENITIES').values()
+            query = list(query.items())  # convert dict to list of tuples because we need multiple identical keys
+            for a in amenities:
+                query.append(('amenities[]', a))
+
+        return self._build_airbnb_url(_api_path, query)
+
     def _get_search_params(self, data):
         """Consolidate search parameters and return result."""
         tab = data['explore_tabs'][0]
@@ -301,8 +303,27 @@ class BnbSpider(scrapy.Spider):
 
     def _listing_api_request(self, listing, params):
         """Generate scrapy.Request for single listing."""
-        url = self._build_airbnb_url('/api/v2/pdp_listing_details/{}'.format(listing['listing']['id']), params)
+        api_path = '/api/v2/pdp_listing_details'
+        url = self._build_airbnb_url('{}/{}'.format(api_path, listing['listing']['id']), params)
         return scrapy.Request(url, callback=self._parse_listing_contents)
+
+    @staticmethod
+    def _parse_bedrooms(listing) -> int:
+        """Get bedrooms from listing, return integer."""
+        bedrooms = 0
+        if 'bedrooms' in listing:
+            bedrooms = listing['bedrooms']
+        elif 'bedroom_label' in listing:
+            if listing['bedroom_label'] == 'Studio':
+                bedrooms = 0
+            else:
+                result = re.search(r'\d+', listing['bedroom_label'])
+                if result:
+                    bedrooms = int(result[0])
+                else:
+                    raise RuntimeError(f'Unhandled bedroom_label: {listing["bedroom_label"]}')
+
+        return bedrooms
 
     def _parse_listing_contents(self, response):
         """Obtain data from an individual listing page."""
@@ -310,19 +331,19 @@ class BnbSpider(scrapy.Spider):
         listing = data['pdp_listing_detail']
         listing_id = listing['id']  # photos?
 
-        # item['person_capacity'] = listing['p3_event_data_logging']['person_capacity']
         item = DeepbnbItem(
             id=listing_id,
             access=listing['sectioned_description']['access'],
             additional_house_rules=listing['additional_house_rules'],
             allows_events=listing['guest_controls']['allows_events'],
-            amenities=','.join([la['name'] for la in listing['listing_amenities']]),
-            bathrooms=listing.get('bathrooms', listing['bathroom_label']),
-            bedrooms=listing.get('bedrooms', listing['bedroom_label']),
-            beds=listing.get('beds', listing['bed_label']),
+            amenities={la['id']: la['name'] for la in listing['listing_amenities'] if la['is_present']},
+            bathrooms=listing.get('bathrooms', re.search(r'\d+(\.\d+)?', listing['bathroom_label'])[0]),
+            bedrooms=self._parse_bedrooms(listing),
+            beds=listing.get('beds', re.search(r'\d+', listing['bed_label'])[0]),
             business_travel_ready=listing['is_business_travel_ready'],
-            calendar_updated_at=listing['calendar_last_updated_at'],
-            city=listing['localized_city'],
+            city=self._geography['city'],
+            country=self._geography['country'],
+            country_code=self._geography['country_code'],
             description=listing['sectioned_description']['description'],
             host_id=listing['primary_host']['id'],
             house_rules=listing['sectioned_description']['house_rules'],
@@ -337,40 +358,32 @@ class BnbSpider(scrapy.Spider):
             notes=listing['sectioned_description']['notes'],
             person_capacity=listing['person_capacity'],
             photo_count=len(listing['photos']),
+            place_id=self._geography['place_id'],
             price_rate=self._data_cache[listing_id]['price_rate'],
             price_rate_type=self._data_cache[listing_id]['price_rate_type'],
+            province=self._geography['province'],
             rating_accuracy=listing['p3_event_data_logging']['accuracy_rating'],
             rating_checkin=listing['p3_event_data_logging']['checkin_rating'],
             rating_cleanliness=listing['p3_event_data_logging']['cleanliness_rating'],
             rating_communication=listing['p3_event_data_logging']['communication_rating'],
             rating_location=listing['p3_event_data_logging']['location_rating'],
             rating_value=listing['p3_event_data_logging']['value_rating'],
-            response_rate=listing['p3_event_data_logging']['response_rate_shown'],
-            response_time=listing['p3_event_data_logging']['response_time_shown'],
             review_count=listing['review_details_interface']['review_count'],
             review_score=listing['review_details_interface']['review_score'],
             room_and_property_type=listing['room_and_property_type'],
             room_type=listing['room_type_category'],
             satisfaction_guest=listing['p3_event_data_logging']['guest_satisfaction_overall'],
             star_rating=listing['star_rating'],
+            state=self._geography['state'],
+            state_short=self._geography['state_short'],
             summary=listing['sectioned_description']['summary'],
-            tier_id=listing['tier_id'],
             total_price=self._data_cache[listing_id]['total_price'],
             transit=listing['sectioned_description']['transit'],
             url="https://www.airbnb.com/rooms/{}".format(listing['id']),
             weekly_price_factor=self._data_cache[listing_id]['weekly_price_factor']
         )
-        # item['reviews'] = data['bootstrapData']['reduxData']['homePDP'].get('reviewsInfo', {}).get(
-        #     'cumulativeReviews')
 
-        if 'calendar_last_updated_at' in listing:
-            item['calendar_updated_at'] = listing['calendar_last_updated_at']
-
-        if 'interaction' in listing['sectioned_description']:
+        if 'interaction' in listing['sectioned_description'] and listing['sectioned_description']['interaction']:
             item['interaction'] = listing['sectioned_description']['interaction']
-
-        if True:  # code for creating links in XLSX files, but need to fix that conditional
-            item['name'] = '=HYPERLINK("https://www.airbnb.com/rooms/{}", "{}")'.format(
-                listing_id, listing.get('name', listing_id)),
 
         return item
