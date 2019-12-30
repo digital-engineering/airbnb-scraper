@@ -17,10 +17,9 @@ Regex matching, open matched properties in a browser, and save to csv/xlsx.
     # Create settings.py
     cp deepbnb/settings.py.dist deepbnb/settings.py
     
-    # Don't forget to set AIRBNB_API_KEY in settings.py. To find your API key, 
-    # do a manual search on Airbnb, and look for to the 'key' url parameter in 
-    # async requests to /api/v2/explore_tabs in your browser's dev tools under
-    # the Network tab.
+    # @NOTE: Don't forget to set AIRBNB_API_KEY in settings.py. To find your API key, 
+    # search Airbnb using Chrome, open dev tools, and look for to the url parameter  
+    # named "key" in async requests to /api/v2/explore_tabs under the Network tab.
 
 ## Example Usage
 

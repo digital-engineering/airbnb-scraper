@@ -361,7 +361,7 @@ class BnbSpider(scrapy.Spider):
             place_id=self._geography['place_id'],
             price_rate=self._data_cache[listing_id]['price_rate'],
             price_rate_type=self._data_cache[listing_id]['price_rate_type'],
-            province=self._geography['province'],
+            province=self._geography.get('province'),
             rating_accuracy=listing['p3_event_data_logging']['accuracy_rating'],
             rating_checkin=listing['p3_event_data_logging']['checkin_rating'],
             rating_cleanliness=listing['p3_event_data_logging']['cleanliness_rating'],
