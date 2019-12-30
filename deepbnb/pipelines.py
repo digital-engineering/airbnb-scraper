@@ -110,12 +110,19 @@ class BnbPipeline:
 class ElasticBnbPipeline:
     def process_item(self, item, spider):
         """Insert / update items in ElasticSearch."""
+        if isinstance(item['amenities'], str):
+            amenities = list(item['amenities'])
+            amenity_ids = list(item['amenities'])
+        else:  # dict
+            amenities = list(item['amenities'].values())
+            amenity_ids = list(item['amenities'].keys())
+
         properties = {
             'access':                 item['access'],
             'additional_house_rules': item['additional_house_rules'],
             'allows_events':          item['allows_events'],
-            'amenities':              list(item['amenities'].values()),
-            'amenity_ids':            list(item['amenities'].keys()),
+            'amenities':              amenities,
+            'amenity_ids':            amenity_ids,
             'bathrooms':              item['bathrooms'],
             'bedrooms':               item['bedrooms'],
             'beds':                   item['beds'],
