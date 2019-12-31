@@ -3,8 +3,10 @@ import json
 import re
 import scrapy
 
+from datetime import date, timedelta
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
+
 from deepbnb.items import DeepbnbItem
-from urllib.parse import urlencode, urlunparse
 
 
 class BnbSpider(scrapy.Spider):
@@ -34,24 +36,10 @@ class BnbSpider(scrapy.Spider):
         self._currency = currency
         self._data_cache = {}
         self._geography = {}
-        self._neighborhoods = {}
+        self._ids_seen = set()
         self._place = query
         self._search_params = {}
-
-        self._max_price = max_price
-        self._min_price = min_price
-        if self._min_price and self._max_price:
-            self._max_price = int(self._max_price)
-            self._min_price = int(self._min_price)
-            self.price_range = (self._min_price, self._max_price, self.default_price_increment)
-
-        if self._min_price and not self._max_price:
-            self._min_price = int(self._min_price)
-            self.price_range = (self._min_price, self.default_max_price, self.default_price_increment)
-
-        if not self._min_price and self._max_price:
-            self._max_price = int(self._max_price)
-            self.price_range = (0, self._max_price, self.default_price_increment)
+        self._set_price_params(max_price, min_price)
 
     @staticmethod
     def iterate_neighborhoods(neighborhoods):
@@ -80,57 +68,39 @@ class BnbSpider(scrapy.Spider):
         tab = data['explore_tabs'][0]
 
         # Handle pagination
+        next_section = {}
         pagination = tab['pagination_metadata']
         if pagination['has_next_page']:
             items_offset = pagination['items_offset']
-            next_section = self._search_params.copy()
+            BnbSpider._add_search_params(next_section, response)
             next_section.update({'items_offset': items_offset})
             yield self._api_request(params=next_section, response=response)
 
         # handle listings
-        params = {
-            '_format': 'for_rooms_show',
-            'key':     self._api_key,
-        }
-
-        if self._checkin:
-            params['checkin'] = self._checkin
-            params['checkout'] = self._checkout
-
-        if self._max_price:
-            params['price_max'] = self._max_price
-
-        if self._min_price:
-            params['price_min'] = self._min_price
-
+        params = {'_format': 'for_rooms_show', 'key': self._api_key}
+        BnbSpider._add_search_params(params, response)
         listings = self._get_listings_from_sections(tab['sections'])
         for listing in listings:  # request each property page
+            listing_id = listing['listing']['id']
+            if listing_id in self._ids_seen:
+                continue  # filter duplicates
+            self._ids_seen.add(listing_id)
             yield self._listing_api_request(listing, params)
 
     def parse_landing_page(self, response):
         """Parse search response and generate URLs for all searches, then perform them."""
         data = self.read_data(response)
-        self._search_params = self._get_search_params(data)
-        self._neighborhoods = self._get_neighborhoods(data)
+        search_params = self._get_paginated_search_params(response, data)
+        neighborhoods = self._get_neighborhoods(data)
 
         tab = data['explore_tabs'][0]
         metadata = tab['home_tab_metadata']
         self._geography = metadata['geography']
 
         self.logger.info(f"Geography:\n{self._geography}")
-        self.logger.info(f"Neighborhoods:\n{self._neighborhoods}")
+        self.logger.info(f"Neighborhoods:\n{neighborhoods}")
 
-        if self._neighborhoods:  # iterate by neighborhood
-            for neighborhood in self.iterate_neighborhoods(self._neighborhoods.values()):
-                for price in self.iterate_prices(self.price_range):
-                    params = self._search_params.copy()
-                    params.update(neighborhood)
-                    params.update(price)
-                    yield self._api_request(params=params, response=response, callback=self.parse)
-
-        else:  # iterate by search pagination
-            params = self._search_params.copy()
-            yield self._api_request(params=params, response=response, callback=self.parse)
+        yield self._api_request(params=search_params, response=response, callback=self.parse)
 
     def read_data(self, response):
         """Read response data as json"""
@@ -141,15 +111,35 @@ class BnbSpider(scrapy.Spider):
     def start_requests(self):
         """Application entry point. Generate the first search request."""
         self.logger.info(f"starting survey for: {self._place}")
+
+        # get params from injected constructor values
         params = {}
-        if self._checkin:
-            params['checkin'] = self._checkin
-            params['checkout'] = self._checkout
+        if self._price_max:
+            params['price_max'] = self._price_max
 
-        if self._max_price:
-            params['price_max'] = self._max_price
+        if self._price_min:
+            params['price_min'] = self._price_min
 
-        yield self._api_request(params, callback=self.parse_landing_page)
+        if not self._checkin:  # assume not self._checkout also
+            yield self._api_request(params, callback=self.parse_landing_page)
+
+        checkin_range_spec, checkout_range_spec = self._process_checkin_vars()
+
+        # perform request(s)
+        yield from self._perform_checkin_start_requests(checkin_range_spec, checkout_range_spec, params)
+
+    @staticmethod
+    def _add_search_params(params, response):
+        parsed_q = parse_qs(urlparse(response.request.url).query)
+        if 'checkin' in parsed_q:
+            params['checkin'] = parsed_q['checkin'][0]
+            params['checkout'] = parsed_q['checkout'][0]
+
+        if 'price_max' in parsed_q:
+            params['price_max'] = parsed_q['price_max'][0]
+
+        if 'price_min' in parsed_q:
+            params['price_min'] = parsed_q['price_min'][0]
 
     def _api_request(self, params=None, response=None, callback=None):
         """Perform API request."""
@@ -170,8 +160,25 @@ class BnbSpider(scrapy.Spider):
         parts = ['https', 'www.airbnb.com', path, None, query, None]
         return urlunparse(parts)
 
+    @staticmethod
+    def _build_date_range(iso_date: str, range_spec: str):
+        """Calculate start and end dates for a range. Return start date and timedelta for number of days."""
+        base_date = date.fromisoformat(iso_date)
+        if range_spec.startswith('+-'):  # +-7
+            days = float(re.match(r'\+\-(\d+)', range_spec).group(1))
+            start_date = base_date - timedelta(days=days)
+            end_date = base_date + timedelta(days=days)
+        else:  # +0-3
+            result = re.match(r'\+(\d+)\-(\d+)', range_spec)
+            post_days = float(result.group(1))
+            pre_days = float(result.group(2))
+            start_date = base_date - timedelta(days=pre_days)
+            end_date = base_date + timedelta(days=post_days)
+        return start_date, end_date - start_date
+
     def _get_listings_from_sections(self, sections):
-        """Get listings from sections, also collect some data and save it for later."""
+        """Get listings from sections, also collect some data and save it for later. Double check prices are correct,
+        because airbnb switches to """
         listings = []
         for s in sections:
             if 'listings' not in s:
@@ -180,6 +187,15 @@ class BnbSpider(scrapy.Spider):
             for listing in s['listings']:
                 listing_id = listing['listing']['id']
                 pricing = listing['pricing_quote']
+                rate_with_service_fee = pricing['rate_with_service_fee']['amount']
+
+                # To account for results where price_max was specified as monthly but quoted rate is nightly, calculate
+                # monthly rate and drop listing if it is greater. Use 28 days = 1 month. Assume price_max of 1000+ is a
+                # monthly price requirement. Rich people can pay someone to code it up differently if they'd like.
+                if self._price_max and self._price_max > 1000 and pricing['rate_type'] != 'monthly' and (
+                        rate_with_service_fee * 28) > self._price_max:
+                    continue
+
                 self._data_cache[listing_id] = {}
                 self._data_cache[listing_id]['monthly_price_factor'] = pricing['monthly_price_factor']
                 self._data_cache[listing_id]['weekly_price_factor'] = pricing['weekly_price_factor']
@@ -217,6 +233,30 @@ class BnbSpider(scrapy.Spider):
                         break
 
         return neighborhoods
+
+    @staticmethod
+    def _get_paginated_search_params(response, data):
+        """Consolidate search parameters and return result."""
+        tab = data['explore_tabs'][0]
+        pagination = tab['pagination_metadata']
+        metadata = tab['home_tab_metadata']
+        geography = metadata['geography']
+        location = metadata['location']
+        params = {
+            'federated_search_session_id':
+                data['metadata']['federated_search_session_id'],
+            'place_id':
+                geography['place_id'],
+            'query':
+                location['canonical_location']
+        }
+
+        if pagination['has_next_page']:
+            params['last_search_session_id'] = pagination['search_session_id']
+
+        BnbSpider._add_search_params(params, response)
+
+        return params
 
     def _get_search_api_url(self, params=None):
         _api_path = '/api/v2/explore_tabs'
@@ -272,34 +312,6 @@ class BnbSpider(scrapy.Spider):
                 query.append(('amenities[]', a))
 
         return self._build_airbnb_url(_api_path, query)
-
-    def _get_search_params(self, data):
-        """Consolidate search parameters and return result."""
-        tab = data['explore_tabs'][0]
-        pagination = tab['pagination_metadata']
-        metadata = tab['home_tab_metadata']
-        geography = metadata['geography']
-        location = metadata['location']
-        params = {
-            'federated_search_session_id':
-                data['metadata']['federated_search_session_id'],
-            'place_id':
-                geography['place_id'],
-            'query':
-                location['canonical_location']
-        }
-
-        if pagination['has_next_page']:
-            params['last_search_session_id'] = pagination['search_session_id']
-
-        if self._checkin:
-            params['checkin'] = self._checkin
-            params['checkout'] = self._checkout
-
-        if self._max_price:
-            params['price_max'] = self._max_price
-
-        return params
 
     def _listing_api_request(self, listing, params):
         """Generate scrapy.Request for single listing."""
@@ -361,7 +373,7 @@ class BnbSpider(scrapy.Spider):
             place_id=self._geography['place_id'],
             price_rate=self._data_cache[listing_id]['price_rate'],
             price_rate_type=self._data_cache[listing_id]['price_rate_type'],
-            province=self._geography['province'],
+            province=self._geography.get('province'),
             rating_accuracy=listing['p3_event_data_logging']['accuracy_rating'],
             rating_checkin=listing['p3_event_data_logging']['checkin_rating'],
             rating_cleanliness=listing['p3_event_data_logging']['cleanliness_rating'],
@@ -387,3 +399,81 @@ class BnbSpider(scrapy.Spider):
             item['interaction'] = listing['sectioned_description']['interaction']
 
         return item
+
+    def _perform_checkin_start_requests(self, checkin_range_spec: str, checkout_range_spec: str, params: dict):
+        """Perform requests for start URLs.
+
+        :param checkin_range_spec:
+        :param checkout_range_spec:
+        :param params:
+        :return:
+        """
+        # single request for static start and end dates
+        if not (checkin_range_spec or checkout_range_spec):  # simple start and end date
+            params['checkin'] = self._checkin
+            params['checkout'] = self._checkout
+            yield self._api_request(params, callback=self.parse_landing_page)
+
+        # multi request for dynamic start and static end date
+        if checkin_range_spec and not checkout_range_spec:  # ranged start date, single end date, iterate over checkin range
+            checkin_start_date, checkin_range = self._build_date_range(self._checkin, checkin_range_spec)
+            for i in range(checkin_range.days + 1):  # + 1 to include end date
+                params['checkin'] = self._checkin = str(checkin_start_date + timedelta(days=i))
+                params['checkout'] = self._checkout
+                yield self._api_request(params, callback=self.parse_landing_page)
+
+        # multi request for static start and dynamic end date
+        if checkout_range_spec and not checkin_range_spec:  # ranged end date, single start date, iterate over checkout range
+            checkout_start_date, checkout_range = self._build_date_range(self._checkout, checkout_range_spec)
+            for i in range(checkout_range.days + 1):  # + 1 to include end date
+                params['checkout'] = self._checkout = str(checkout_start_date + timedelta(days=i))
+                params['checkin'] = self._checkin
+                yield self._api_request(params, callback=self.parse_landing_page)
+
+        # double nested multi request, iterate over both start and end date ranges
+        if checkout_range_spec and checkin_range_spec:
+            checkin_start_date, checkin_range = self._build_date_range(self._checkin, checkin_range_spec)
+            checkout_start_date, checkout_range = self._build_date_range(self._checkout, checkout_range_spec)
+            for i in range(checkin_range.days + 1):  # + 1 to include end date
+                params['checkin'] = self._checkin = str(checkin_start_date + timedelta(days=i))
+                for j in range(checkout_range.days + 1):  # + 1 to include end date
+                    params['checkout'] = self._checkout = str(checkout_start_date + timedelta(days=j))
+                    yield self._api_request(params, callback=self.parse_landing_page)
+
+    def _process_checkin_vars(self) -> tuple:
+        """Determine if a range is specified, if so, extract ranges and return as variables.
+
+        @NOTE: Should only be run once on crawler initialization.
+
+        :return: checkin/checkout range specs
+        """
+        checkin_range_spec, checkout_range_spec = None, None
+
+        checkin_plus_range_position = self._checkin.find('+')
+        if checkin_plus_range_position != -1:  # range_spec e.g. +5-3 means plus five days, minus three days
+            checkin_range_spec = self._checkin[checkin_plus_range_position:]
+            self._checkin = self._checkin[:checkin_plus_range_position]
+
+        checkout_plus_range_position = self._checkout.find('+')
+        if checkout_plus_range_position != -1:  # range_spec e.g. +-3 means plus or minus 3 days
+            checkout_range_spec = self._checkout[checkout_plus_range_position:]
+            self._checkout = self._checkout[:checkout_plus_range_position]
+
+        return checkin_range_spec, checkout_range_spec
+
+    def _set_price_params(self, price_max, price_min):
+        """Set price parameters based on price_max and price_min input values."""
+        self._price_max = price_max
+        self._price_min = price_min
+        if self._price_min and self._price_max:
+            self._price_max = int(self._price_max)
+            self._price_min = int(self._price_min)
+            self.price_range = (self._price_min, self._price_max, self.default_price_increment)
+
+        if self._price_min and not self._price_max:
+            self._price_min = int(self._price_min)
+            self.price_range = (self._price_min, self.default_max_price, self.default_price_increment)
+
+        if not self._price_min and self._price_max:
+            self._price_max = int(self._price_max)
+            self.price_range = (0, self._price_max, self.default_price_increment)
