@@ -27,13 +27,14 @@ Regex matching, open matched properties in a browser, and save to csv/xlsx.
 
     scrapy crawl bnb -a query="Colorado Springs, CO" -o colorado_springs.csv
     
-#### Advanced command line options:
+#### Advanced examples:
 
+##### Madrid
 ```
 scrapy crawl bnb \
     -a query="Madrid, Spain" \
-    -a checkin=10/01/2020 \
-    -a checkout=11/31/2020 \
+    -a checkin=2020-10-01 \
+    -a checkout=2020-11-31 \
     -a max_price=1900 \
     -a min_price=1800 \
     -a neighborhoods="Acacias,Almagro,Arganzuela,Argüelles,Centro,Cortes,Embajadores,Imperial,Jerónimos,La Latina,Malasaña,Moncloa,Palacio,Recoletos,Retiro,Salamanca,Sol" \
@@ -43,6 +44,18 @@ scrapy crawl bnb \
     -s WEB_BROWSER="/usr/bin/chromium" \
     -o madrid.xlsx
 ```
+##### New York ranged date search
+```
+scrapy crawl bnb \
+    -a query="New York, NY" \
+    -a checkin="2020-01-22+7-0" \
+    -a checkout="2020-02-22+14-3" \
+    -a max_price=1800 \
+    -s CANNOT_HAVE="guest suite" \
+    -s MUST_HAVE="(walking distance|short walk|no car needed|walk everywhere|metro close|public transport)" \
+    -o newyork.csv
+```
+
 
 ## Scraping Description
 
@@ -83,7 +96,7 @@ command line using the `-s` flag as in the example above.
   Don't accept listings that match the given regex pattern. 
   **(optional)**
   
-* `FIELDS_TO_EXPORT=['field1', 'field2', ...]`  
+* `FIELDS_TO_EXPORT="['field1', 'field2', ...]"`  
   Can be found in settings.py. Contains a list of all possible fields to 
   export, i.e. all fields of `AirbnbScraperItem`. Comment items to 
   remove undesired fields from output.
@@ -100,8 +113,12 @@ command line using the `-s` flag as in the example above.
   Only accept listings that match the given regex pattern. 
   **(optional)**
 
-* `PROPERTY_TYPE_BLACKLIST=['Camper/RV', 'Campsite', 'Entire guest suite']`  
+* `PROPERTY_TYPE_BLACKLIST="['Camper/RV', 'Campsite', 'Entire guest suite']"`  
   Property Types to filter. 
+  **(optional)**
+
+* `SKIP_LIST="['12345678', '12345679', '12345680']"`  
+  Property IDs to filter. 
   **(optional)**
 
 * `WEB_BROWSER="/path/to/browser %s"`  

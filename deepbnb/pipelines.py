@@ -34,7 +34,7 @@ class BnbPipeline:
     ):
         """Class constructor."""
         self._feed_format = feed_format
-        self._fields_to_check = ['description', 'name', 'summary', 'reviews', 'notes']
+        self._fields_to_check = ['description', 'name', 'summary', 'notes']
         self._minimum_monthly_discount = minimum_monthly_discount
         self._minimum_weekly_discount = minimum_weekly_discount
         self._minimum_photos = minimum_photos
@@ -77,14 +77,20 @@ class BnbPipeline:
         # check regexes
         if self._cannot_have_regex:
             for f in self._fields_to_check:
-                v = str(item[f].encode('ASCII', 'replace'))
+                field_val = item[f]
+                if field_val is None:
+                    continue
+                v = str(field_val.encode('ASCII', 'replace'))
                 if self._cannot_have_regex.search(v):
                     raise DropItem('Found: {}'.format(self._cannot_have_regex.pattern))
 
         if self._must_have_regex:
             has_must_haves = False
             for f in self._fields_to_check:
-                v = str(item[f].encode('ASCII', 'replace'))
+                field_val = item[f]
+                if field_val is None:
+                    continue
+                v = str(field_val.encode('ASCII', 'replace'))
                 if self._must_have_regex.search(v):
                     has_must_haves = True
                     break
@@ -103,3 +109,20 @@ class BnbPipeline:
             item['amenities'] = ','.join(item['amenities'].values())
 
         return item
+
+
+class DuplicatesPipeline:
+    """Looks for duplicate items, and drops those items that were already processed
+
+    @ref: https://docs.scrapy.org/en/latest/topics/item-pipeline.html#duplicates-filter
+    """
+
+    def __init__(self):
+        self.ids_seen = set()
+
+    def process_item(self, item, spider):
+        if item['id'] in self.ids_seen:
+            raise DropItem("Duplicate item found: %s" % item)
+        else:
+            self.ids_seen.add(item['id'])
+            return item
