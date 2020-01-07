@@ -84,7 +84,7 @@ ITEM_PIPELINES = {
 
 # https://docs.scrapy.org/en/latest/topics/feed-exports.html
 FEED_EXPORTERS = {
-    'xlsx': 'deepbnb.exporter.AirbnbExcelItemExporter',
+    'xlsx': 'deepbnb.exporter.XlsxItemExporter',
 }
 
 FEED_EXPORT_FIELDS = [

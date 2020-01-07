@@ -109,7 +109,7 @@ class BnbSpider(scrapy.Spider):
         return data
 
     def start_requests(self):
-        """Application entry point. Generate the first search request."""
+        """Spider entry point. Generate the first search request(s)."""
         self.logger.info(f"starting survey for: {self._place}")
 
         # get params from injected constructor values
@@ -207,7 +207,8 @@ class BnbSpider(scrapy.Spider):
                 else:
                     self._data_cache[listing_id]['price_rate'] = pricing['rate_with_service_fee']['amount']
                     self._data_cache[listing_id]['price_rate_type'] = pricing['rate_type']
-                    self._data_cache[listing_id]['total_price'] = None
+                    self._data_cache[listing_id][
+                        'total_price'] = None  # can't show total price if there is not definite timeframe
 
                 listings.append(listing)
 
@@ -314,7 +315,7 @@ class BnbSpider(scrapy.Spider):
         return self._build_airbnb_url(_api_path, query)
 
     def _listing_api_request(self, listing, params):
-        """Generate scrapy.Request for single listing."""
+        """Generate scrapy.Request for listing page."""
         api_path = '/api/v2/pdp_listing_details'
         url = self._build_airbnb_url('{}/{}'.format(api_path, listing['listing']['id']), params)
         return scrapy.Request(url, callback=self._parse_listing_contents)
@@ -348,7 +349,8 @@ class BnbSpider(scrapy.Spider):
             access=listing['sectioned_description']['access'],
             additional_house_rules=listing['additional_house_rules'],
             allows_events=listing['guest_controls']['allows_events'],
-            amenities={la['id']: la['name'] for la in listing['listing_amenities'] if la['is_present']},
+            amenities=[la['name'] for la in listing['listing_amenities'] if la['is_present']],
+            amenity_ids=[la['id'] for la in listing['listing_amenities'] if la['is_present']],
             bathrooms=listing.get('bathrooms', re.search(r'\d+(\.\d+)?', listing['bathroom_label'])[0]),
             bedrooms=self._parse_bedrooms(listing),
             beds=listing.get('beds', re.search(r'\d+', listing['bed_label'])[0]),

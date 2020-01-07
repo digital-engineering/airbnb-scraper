@@ -137,6 +137,7 @@ command line using the `-s` flag as in the example above.
 
 ## Requirements
 
+* Python 3.3+
 * [Scrapy](http://scrapy.org/)
 * [openpyxl](https://openpyxl.readthedocs.io/en/default/#installation)
 

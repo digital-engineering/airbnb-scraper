@@ -15,6 +15,7 @@ class DeepbnbItem(scrapy.Item):
     additional_house_rules = scrapy.Field()
     allows_events = scrapy.Field()
     amenities = scrapy.Field()
+    amenity_ids = scrapy.Field()
     bathrooms = scrapy.Field()
     bedrooms = scrapy.Field()
     beds = scrapy.Field()

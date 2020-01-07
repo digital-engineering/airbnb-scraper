@@ -4,7 +4,7 @@ import six
 from scrapy.exporters import BaseItemExporter
 
 
-class AirbnbExcelItemExporter(BaseItemExporter):
+class XlsxItemExporter(BaseItemExporter):
     """Export items to Excel spreadsheet."""
 
     def __init__(self, file, include_headers_line=True, join_multivalued=',', **kwargs):
@@ -28,6 +28,10 @@ class AirbnbExcelItemExporter(BaseItemExporter):
             self._headers_not_written = False
             self._write_headers_and_set_fields_to_export(item)
 
+        # Make name into a hyperlink
+        item['name'] = '=HYPERLINK("https://www.airbnb.com/rooms/{}", "{}")'.format(
+            item['id'], item.get('name', item['id'])),
+
         fields = self._get_serialized_fields(item, default_value='', include_empty=True)
         values = tuple(self._build_row(x for _, x in fields))
         self._worksheet.append(values)
@@ -39,6 +43,13 @@ class AirbnbExcelItemExporter(BaseItemExporter):
         serializer = field.get('serializer', self._join_if_needed)
         return serializer(value)
 
+    def _build_row(self, values):
+        for s in values:
+            try:
+                yield self._to_native_str(s)
+            except TypeError:
+                yield s
+
     def _join_if_needed(self, value):
         if isinstance(value, (list, tuple)):
             try:
@@ -47,21 +58,14 @@ class AirbnbExcelItemExporter(BaseItemExporter):
                 pass
         return value
 
-    def _build_row(self, values):
-        for s in values:
-            try:
-                yield self._to_native_str(s)
-            except TypeError:
-                yield s
-
     def _to_native_str(self, text, encoding=None, errors='strict'):
         return self._to_unicode(text, encoding, errors)
 
     @staticmethod
     def _to_unicode(text, encoding=None, errors='strict'):
-        """Return the unicode representation of a bytes object `text`. If `text` is already an unicode object, return it
-         as-is.
-         """
+        """Return the unicode representation of a bytes object `text`. If `text` is already an unicode object, return
+        it as-is.
+        """
         if isinstance(text, six.text_type):
             return text
         if not isinstance(text, (bytes, six.text_type)):

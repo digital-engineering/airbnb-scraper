@@ -101,13 +101,6 @@ class BnbPipeline:
         if self._web_browser:  # open in browser
             self._web_browser.open_new_tab(item['url'])
 
-        if self._feed_format == 'xlsx':  # create name as link in XLSX files
-            item['name'] = '=HYPERLINK("https://www.airbnb.com/rooms/{}", "{}")'.format(
-                item['id'], item.get('name', item['id'])),
-
-        if self._feed_format in ['csv', 'xlsx']:  # flatten amenities dict for spreadsheets
-            item['amenities'] = ','.join(item['amenities'].values())
-
         return item
 
 
