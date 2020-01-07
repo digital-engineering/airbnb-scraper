@@ -1,7 +1,11 @@
 # Airbnb Scraper: Advanced Airbnb Search using Scrapy 
 
 Use Airbnb's unofficial API to efficiently search for rental properties. 
-Regex matching, ranged search, open matched properties in a browser, save to CSV, xlsx, or ElasticSearch.
+Regex matching, ranged search, open matched properties in a browser, save to CSV, xlsx, or ElasticSearch (beta).
+
+## Note
+
+Airbnb's API is subject to change at any moment, which would break this scraper. They've already changed it several times in the past. Also, using this probably violates their TOS. Please only use for educational or research purposes. If you hammer Airbnb's API they will probably block you.
 
 ## Installation (nix)
 
@@ -24,6 +28,8 @@ Regex matching, ranged search, open matched properties in a browser, save to CSV
 ## Configuration
 
 Edit `deepbnb/settings.py` for settings. I've created some custom settings which are documented below. The rest are documented in https://docs.scrapy.org/en/latest/topics/settings.html.
+
+
 
 ## Example Usage
 
@@ -60,10 +66,36 @@ scrapy crawl bnb \
     -o newyork.csv
 ```
 
+## Ranged date queries
+
+If you have flexible checkin / checkout dates, use the ranged search feature to search a range of checkin / checkout dates.
+
+### Search checkin date range +5 days -2 days
+
+    scrapy crawl bnb \
+        -a query="Minneapolis, MN" \
+        -a checkin="2020-10-15+5-2" \
+        -a checkin="2020-11-15" \
+        -o minneapolis.csv
+
+This search would look for rentals in Minneapolis using Oct 15 2020 as base check-in date, and also searching for rentals
+available for check-in 2 days before, up to 5 days after. In other words, check-ins from Oct 13 to Oct 20. This is specified
+by the string `+5-2` appended to the checkin date `2020-10-15+5-2`. The string must always follow the pattern 
+`+[days_after]-[days_before]` unless \[days\_after\] and \[days\_before\] are equal, in which case you can use `+-[days]`.
+The numbers may be any integer 0 or greater (large numbers untested).
+
+### Search checkin date +5 days -2 days, checkout date + or - 3 days
+
+    scrapy crawl bnb \
+        -a query="Florence, Italy" \
+        -a checkin="2020-10-15+5-2" \
+        -a checkin="2020-11-15+-3" \
+        -o firenze.csv
+
 
 ## Scraping Description
 
-After running the above command, the scraper will start. It will first run the 
+After running the crawl command, the scraper will start. It will first run the 
 search query, then determine the quantity of result pages, and finally iterate 
 through each of those, scraping each of the property listings on each page.
 

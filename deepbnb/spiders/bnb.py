@@ -449,6 +449,9 @@ class BnbSpider(scrapy.Spider):
 
         :return: checkin/checkout range specs
         """
+        if not self._checkin:
+            return None, None
+
         checkin_range_spec, checkout_range_spec = None, None
 
         checkin_plus_range_position = self._checkin.find('+')
