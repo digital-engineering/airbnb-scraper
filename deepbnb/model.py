@@ -35,7 +35,7 @@ class Listing(Document):
     place_id = Text(fields={'keyword': Keyword()})
     price_rate = Float()
     price_rate_type = Text(fields={'keyword': Keyword()}, required=True)
-    province = Text(fields={'keyword': Keyword()}, required=True)
+    province = Text(fields={'keyword': Keyword()})
     rating_accuracy = Integer()
     rating_checkin = Integer()
     rating_cleanliness = Integer()
