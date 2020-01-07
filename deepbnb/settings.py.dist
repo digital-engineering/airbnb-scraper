@@ -79,8 +79,9 @@ TELNETCONSOLE_ENABLED = False
 # Configure item pipelines
 # See http://scrapy.readthedocs.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
-    'deepbnb.pipelines.BnbPipeline': 300,
-    #    'deepbnb.pipelines.ElasticBnbPipeline': 301 # enable if you want to pipeline results to elasticsearch
+    'deepbnb.pipelines.DuplicatesPipeline': 299,
+    'deepbnb.pipelines.BnbPipeline':        300,
+    # 'deepbnb.pipelines.ElasticBnbPipeline': 301  # enable if you want to pipeline results to local elasticsearch
 }
 
 # https://docs.scrapy.org/en/latest/topics/feed-exports.html
@@ -107,7 +108,6 @@ FEED_EXPORT_FIELDS = [
     'amenities',
     'review_count',
     'review_score',
-    'calendar_updated_at',
     'rating_accuracy',
     'rating_checkin',
     'rating_cleanliness',

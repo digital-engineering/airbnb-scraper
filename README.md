@@ -141,9 +141,11 @@ command line using the `-s` flag as in the example above.
 
 ## Requirements
 
-* Python 3.3+
+* Python 3.5+
 * [Scrapy](http://scrapy.org/)
 * [openpyxl](https://openpyxl.readthedocs.io/en/default/#installation)
+* ElasticSearch 7+ if using elasticsearch pipeline
+* see requirements.txt for details
 
 
 ## Credits
