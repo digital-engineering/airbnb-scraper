@@ -1,7 +1,7 @@
 # Airbnb Scraper: Advanced Airbnb Search using Scrapy 
 
 Use Airbnb's unofficial API to efficiently search for rental properties. 
-Regex matching, open matched properties in a browser, and save to csv/xlsx.
+Regex matching, ranged search, open matched properties in a browser, save to CSV, xlsx, or ElasticSearch.
 
 ## Installation (nix)
 
@@ -21,6 +21,10 @@ Regex matching, open matched properties in a browser, and save to csv/xlsx.
     # search Airbnb using Chrome, open dev tools, and look for to the url parameter  
     # named "key" in async requests to /api/v2/explore_tabs under the Network tab.
 
+## Configuration
+
+Edit `deepbnb/settings.py` for settings. I've created some custom settings which are documented below. The rest are documented in https://docs.scrapy.org/en/latest/topics/settings.html.
+
 ## Example Usage
 
 #### Minimal scraper usage:
@@ -29,7 +33,7 @@ Regex matching, open matched properties in a browser, and save to csv/xlsx.
     
 #### Advanced examples:
 
-##### Madrid
+##### Madrid, fixed dates, 
 ```
 scrapy crawl bnb \
     -a query="Madrid, Spain" \
