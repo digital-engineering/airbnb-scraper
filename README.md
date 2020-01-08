@@ -75,7 +75,7 @@ If you have flexible checkin / checkout dates, use the ranged search feature to 
     scrapy crawl bnb \
         -a query="Minneapolis, MN" \
         -a checkin="2020-10-15+5-2" \
-        -a checkin="2020-11-15" \
+        -a checkout="2020-11-15" \
         -o minneapolis.csv
 
 This search would look for rentals in Minneapolis using Oct 15 2020 as base check-in date, and also searching for rentals
@@ -89,7 +89,7 @@ The numbers may be any integer 0 or greater (large numbers untested).
     scrapy crawl bnb \
         -a query="Florence, Italy" \
         -a checkin="2020-10-15+5-2" \
-        -a checkin="2020-11-15+-3" \
+        -a checkout="2020-11-15+-3" \
         -o firenze.csv
 
 
