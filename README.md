@@ -39,7 +39,7 @@ Edit `deepbnb/settings.py` for settings. I've created some custom settings which
     
 #### Advanced examples:
 
-##### Madrid, fixed dates, 
+##### Madrid, fixed dates
 ```
 scrapy crawl bnb \
     -a query="Madrid, Spain" \
