@@ -1,5 +1,4 @@
 import openpyxl
-import six
 
 from scrapy.exporters import BaseItemExporter
 
@@ -43,12 +42,10 @@ class XlsxItemExporter(BaseItemExporter):
         serializer = field.get('serializer', self._join_if_needed)
         return serializer(value)
 
-    def _build_row(self, values):
+    @staticmethod
+    def _build_row(values):
         for s in values:
-            try:
-                yield self._to_native_str(s)
-            except TypeError:
-                yield s
+            yield s
 
     def _join_if_needed(self, value):
         if isinstance(value, (list, tuple)):
@@ -57,23 +54,6 @@ class XlsxItemExporter(BaseItemExporter):
             except TypeError:  # list in value may not contain strings
                 pass
         return value
-
-    def _to_native_str(self, text, encoding=None, errors='strict'):
-        return self._to_unicode(text, encoding, errors)
-
-    @staticmethod
-    def _to_unicode(text, encoding=None, errors='strict'):
-        """Return the unicode representation of a bytes object `text`. If `text` is already an unicode object, return
-        it as-is.
-        """
-        if isinstance(text, six.text_type):
-            return text
-        if not isinstance(text, (bytes, six.text_type)):
-            raise TypeError('to_unicode must receive a bytes, str or unicode '
-                            'object, got %s' % type(text).__name__)
-        if encoding is None:
-            encoding = 'utf-8'
-        return text.decode(encoding, errors)
 
     def _write_headers_and_set_fields_to_export(self, item):
         if self.include_headers_line:
