@@ -26,6 +26,10 @@ class BnbSpider(scrapy.Spider):
             currency=default_currency,
             max_price=None,
             min_price=None,
+            ne_lat=None,
+            ne_lng=None,
+            sw_lat=None,
+            sw_lng=None,
             **kwargs
     ):
         """Class constructor."""
@@ -37,9 +41,13 @@ class BnbSpider(scrapy.Spider):
         self._data_cache = {}
         self._geography = {}
         self._ids_seen = set()
+        self._ne_lat = ne_lat
+        self._ne_lng = ne_lng
         self._place = query
         self._search_params = {}
         self._set_price_params(max_price, min_price)
+        self._sw_lat = sw_lat
+        self._sw_lng = sw_lng
 
     @staticmethod
     def iterate_neighborhoods(neighborhoods):
@@ -120,6 +128,18 @@ class BnbSpider(scrapy.Spider):
         if self._price_min:
             params['price_min'] = self._price_min
 
+        if self._ne_lat:
+            params['ne_lat'] = self._ne_lat
+
+        if self._ne_lng:
+            params['ne_lng'] = self._ne_lng
+
+        if self._sw_lat:
+            params['sw_lat'] = self._sw_lat
+
+        if self._sw_lng:
+            params['sw_lng'] = self._sw_lng
+
         if not self._checkin:  # assume not self._checkout also
             yield self._api_request(params, callback=self.parse_landing_page)
 
@@ -140,6 +160,18 @@ class BnbSpider(scrapy.Spider):
 
         if 'price_min' in parsed_q:
             params['price_min'] = parsed_q['price_min'][0]
+
+        if 'ne_lat' in parsed_q:
+            params['ne_lat'] = parsed_q['ne_lat'][0]
+
+        if 'ne_lng' in parsed_q:
+            params['ne_lng'] = parsed_q['ne_lng'][0]
+
+        if 'sw_lat' in parsed_q:
+            params['sw_lat'] = parsed_q['sw_lat'][0]
+
+        if 'sw_lng' in parsed_q:
+            params['sw_lng'] = parsed_q['sw_lng'][0]
 
     def _api_request(self, params=None, response=None, callback=None):
         """Perform API request."""
@@ -355,7 +387,7 @@ class BnbSpider(scrapy.Spider):
             bedrooms=self._parse_bedrooms(listing),
             beds=listing.get('beds', re.search(r'\d+', listing['bed_label'])[0]),
             business_travel_ready=listing['is_business_travel_ready'],
-            city=self._geography['city'],
+            city=self._geography.get('city', listing['localized_city']),
             country=self._geography['country'],
             country_code=self._geography['country_code'],
             description=listing['sectioned_description']['description'],
