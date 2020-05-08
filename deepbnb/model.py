@@ -32,6 +32,7 @@ class Listing(Document):
     notes = Text()
     person_capacity = Integer()
     photo_count = Integer()
+    photos = Keyword(multi=True)
     place_id = Text(fields={'keyword': Keyword()})
     price_rate = Float()
     price_rate_type = Text(fields={'keyword': Keyword()}, required=True)
