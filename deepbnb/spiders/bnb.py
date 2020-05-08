@@ -404,6 +404,7 @@ class BnbSpider(scrapy.Spider):
             notes=listing['sectioned_description']['notes'],
             person_capacity=listing['person_capacity'],
             photo_count=len(listing['photos']),
+            photos=listing['photos'],
             place_id=self._geography['place_id'],
             price_rate=self._data_cache[listing_id]['price_rate'],
             price_rate_type=self._data_cache[listing_id]['price_rate_type'],
