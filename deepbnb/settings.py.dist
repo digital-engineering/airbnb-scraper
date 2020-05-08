@@ -136,6 +136,9 @@ FEED_EXPORT_FIELDS = [
 # Minimum photos per listing
 MINIMUM_PHOTOS = 2
 
+# Default currency
+# DEFAULT_CURRENCY = 'BRL'
+
 # Desired hosting amenities and corresponding IDs. Determined by observing search GET parameters.
 PROPERTY_AMENITIES = {
     # 'a/c':     5,

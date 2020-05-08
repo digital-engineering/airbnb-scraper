@@ -299,7 +299,7 @@ class BnbSpider(scrapy.Spider):
         query = {
             '_format':                       'for_explore_search_web',
             'auto_ib':                       'true',  # was false?
-            'currency':                      self._currency,
+            'currency':                      self.settings.get("DEFAULT_CURRENCY") if self.settings.get("DEFAULT_CURRENCY") else self._currency,
             'current_tab_id':                'home_tab',
             'experiences_per_grid':          '20',
             # 'federated_search_session_id': '',
