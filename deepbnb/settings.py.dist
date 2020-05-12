@@ -125,6 +125,7 @@ FEED_EXPORT_FIELDS = [
     'transit',
     'response_rate',
     'response_time',
+    'photos',
 ]
 
 # Minimum monthly discount percent
