@@ -35,13 +35,13 @@ Edit `deepbnb/settings.py` for settings. I've created some custom settings which
 
 #### Minimal scraper usage:
 
-    scrapy crawl bnb -a query="Colorado Springs, CO" -o colorado_springs.csv
+    scrapy crawl airbnb -a query="Colorado Springs, CO" -o colorado_springs.csv
     
 #### Advanced examples:
 
 ##### Madrid, fixed dates
 ```
-scrapy crawl bnb \
+scrapy crawl airbnb \
     -a query="Madrid, Spain" \
     -a checkin=2020-10-01 \
     -a checkout=2020-11-31 \
@@ -56,7 +56,7 @@ scrapy crawl bnb \
 ```
 ##### New York ranged date search
 ```
-scrapy crawl bnb \
+scrapy crawl airbnb \
     -a query="New York, NY" \
     -a checkin="2020-01-22+7-0" \
     -a checkout="2020-02-22+14-3" \
@@ -72,7 +72,7 @@ If you have flexible checkin / checkout dates, use the ranged search feature to 
 
 ### Search checkin date range +5 days -2 days
 
-    scrapy crawl bnb \
+    scrapy crawl airbnb \
         -a query="Minneapolis, MN" \
         -a checkin="2020-10-15+5-2" \
         -a checkout="2020-11-15" \
@@ -86,7 +86,7 @@ The numbers may be any integer 0 or greater (large numbers untested).
 
 ### Search checkin date +5 days -2 days, checkout date + or - 3 days
 
-    scrapy crawl bnb \
+    scrapy crawl airbnb \
         -a query="Florence, Italy" \
         -a checkin="2020-10-15+5-2" \
         -a checkout="2020-11-15+-3" \
@@ -173,7 +173,7 @@ command line using the `-s` flag as in the example above.
 
 ## Requirements
 
-* Python 3.5+
+* Python 3.6+
 * [Scrapy](http://scrapy.org/)
 * [openpyxl](https://openpyxl.readthedocs.io/en/default/#installation)
 * ElasticSearch 7+ if using elasticsearch pipeline
