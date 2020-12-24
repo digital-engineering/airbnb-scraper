@@ -73,21 +73,20 @@ class BnbSpider(scrapy.Spider):
     def parse(self, response):
         """Default parse method."""
         data = self.read_data(response)
-        tab = data['explore_tabs'][0]
 
         # Handle pagination
         next_section = {}
-        pagination = tab['pagination_metadata']
-        if pagination['has_next_page']:
-            items_offset = pagination['items_offset']
+        pagination = data['data']['dora']['exploreV3']['metadata']['paginationMetadata']
+        if pagination['hasNextPage']:
+            items_offset = pagination['itemsOffset']
             BnbSpider._add_search_params(next_section, response)
-            next_section.update({'items_offset': items_offset})
+            next_section.update({'itemsOffset': items_offset})
             yield self._api_request(params=next_section, response=response)
 
         # handle listings
         params = {'_format': 'for_rooms_show', 'key': self._api_key}
         BnbSpider._add_search_params(params, response)
-        listings = self._get_listings_from_sections(tab['sections'])
+        listings = self._get_listings_from_sections(data['data']['dora']['exploreV3']['sections'])
         for listing in listings:  # request each property page
             listing_id = listing['listing']['id']
             if listing_id in self._ids_seen:
@@ -101,9 +100,7 @@ class BnbSpider(scrapy.Spider):
         search_params = self._get_paginated_search_params(response, data)
         neighborhoods = self._get_neighborhoods(data)
 
-        tab = data['explore_tabs'][0]
-        metadata = tab['home_tab_metadata']
-        self._geography = metadata['geography']
+        self._geography = data['data']['dora']['exploreV3']['metadata']['geography']
 
         self.logger.info(f"Geography:\n{self._geography}")
         self.logger.info(f"Neighborhoods:\n{neighborhoods}")
@@ -175,14 +172,12 @@ class BnbSpider(scrapy.Spider):
 
     def _api_request(self, params=None, response=None, callback=None):
         """Perform API request."""
-        if response:
-            request = response.follow
-        else:
-            request = scrapy.Request
-
+        request = response.follow if response else scrapy.Request
         callback = callback or self.parse
+        url = self._get_search_api_url(params)
+        headers = self._get_search_headers()
 
-        return request(self._get_search_api_url(params), callback)
+        return request(url, callback, headers=headers)
 
     @staticmethod
     def _build_airbnb_url(path, query=None):
@@ -212,35 +207,32 @@ class BnbSpider(scrapy.Spider):
         """Get listings from sections, also collect some data and save it for later. Double check prices are correct,
         because airbnb switches to """
         listings = []
-        for s in sections:
-            if 'listings' not in s:
-                continue
-
-            for listing in s['listings']:
+        for section in [s for s in sections if s['sectionComponentType'] == 'listings_ListingsGrid_Explore']:
+            for listing in section.get('items'):
                 listing_id = listing['listing']['id']
-                pricing = listing['pricing_quote']
-                rate_with_service_fee = pricing['rate_with_service_fee']['amount']
+                pricing = listing['pricingQuote']
+                rate_with_service_fee = pricing['rateWithServiceFee']['amount']
 
                 # To account for results where price_max was specified as monthly but quoted rate is nightly, calculate
                 # monthly rate and drop listing if it is greater. Use 28 days = 1 month. Assume price_max of 1000+ is a
-                # monthly price requirement. Rich people can pay someone to code it up differently if they'd like.
-                if self._price_max and self._price_max > 1000 and pricing['rate_type'] != 'monthly' and (
-                        rate_with_service_fee * 28) > self._price_max:
+                # monthly price requirement.
+                if (self._price_max and self._price_max > 1000
+                        and pricing['rate_type'] != 'monthly'
+                        and (rate_with_service_fee * 28) > self._price_max):
                     continue
 
                 self._data_cache[listing_id] = {}
-                self._data_cache[listing_id]['monthly_price_factor'] = pricing['monthly_price_factor']
-                self._data_cache[listing_id]['weekly_price_factor'] = pricing['weekly_price_factor']
+                self._data_cache[listing_id]['monthly_price_factor'] = pricing['monthlyPriceFactor']
+                self._data_cache[listing_id]['weekly_price_factor'] = pricing['weeklyPriceFactor']
 
                 if self._checkin:  # use total price if dates given, price rate otherwise
-                    self._data_cache[listing_id]['price_rate'] = pricing['rate_with_service_fee']['amount']
-                    self._data_cache[listing_id]['price_rate_type'] = pricing['rate_type']
+                    self._data_cache[listing_id]['price_rate'] = pricing['rateWithServiceFee']['amount']
+                    self._data_cache[listing_id]['price_rate_type'] = pricing['rateType']
                     self._data_cache[listing_id]['total_price'] = pricing['price']['total']['amount']
                 else:
-                    self._data_cache[listing_id]['price_rate'] = pricing['rate_with_service_fee']['amount']
-                    self._data_cache[listing_id]['price_rate_type'] = pricing['rate_type']
-                    self._data_cache[listing_id][
-                        'total_price'] = None  # can't show total price if there is not definite timeframe
+                    self._data_cache[listing_id]['price_rate'] = pricing['rateWithServiceFee']['amount']
+                    self._data_cache[listing_id]['price_rate_type'] = pricing['rateType']
+                    self._data_cache[listing_id]['total_price'] = None  # can't show total price if there are no dates
 
                 listings.append(listing)
 
@@ -270,18 +262,15 @@ class BnbSpider(scrapy.Spider):
     @staticmethod
     def _get_paginated_search_params(response, data):
         """Consolidate search parameters and return result."""
-        tab = data['explore_tabs'][0]
-        pagination = tab['pagination_metadata']
-        metadata = tab['home_tab_metadata']
-        geography = metadata['geography']
-        location = metadata['location']
+        metadata = data['data']['dora']['exploreV3']['metadata']
+        pagination = metadata['paginationMetadata']
+        filter_state = data['data']['dora']['exploreV3']['filters']['state']
+        place_id = metadata['geography']['placeId']
+        query = [fs['value']['stringValue'] for fs in filter_state if fs['key'] == 'query'][0]
         params = {
-            'federated_search_session_id':
-                data['metadata']['federated_search_session_id'],
-            'place_id':
-                geography['place_id'],
-            'query':
-                location['canonical_location']
+            'searchSessionId': pagination['searchSessionId'],
+            'place_id':        place_id,
+            'query':           query
         }
 
         if pagination['has_next_page']:
@@ -292,47 +281,39 @@ class BnbSpider(scrapy.Spider):
         return params
 
     def _get_search_api_url(self, params=None):
-        _api_path = '/api/v2/explore_tabs'
-        if self._api_key is None:
-            self._api_key = self.settings.get("AIRBNB_API_KEY")
+        _api_path = '/api/v3/ExploreSearch'
 
         query = {
-            '_format':                       'for_explore_search_web',
-            'auto_ib':                       'true',  # was false?
-            'currency':                      self.settings.get("DEFAULT_CURRENCY") if self.settings.get("DEFAULT_CURRENCY") else self._currency,
-            'current_tab_id':                'home_tab',
-            'experiences_per_grid':          '20',
-            # 'federated_search_session_id': '',
-            'fetch_filters':                 'true',
-            'guidebooks_per_grid':           '20',
-            'has_zero_guest_treatment':      'false',
-            'hide_dates_and_guests_filters': 'false',
-            'is_guided_search':              'true',
-            'is_new_cards_experiment':       'true',
-            'is_standard_search':            'true',
-            # 'items_offset': '0',
-            'items_per_grid':                '50',
-            'key':                           self._api_key,
-            # 'last_search_session_id': '',
-            'locale':                        'en',
-            'metadata_only':                 'false',
-            # 'neighborhood_ids[]': ,
-            # 'place_id': '',
-            # 'price_max': None,
-            # 'price_min': 10,
-            'query':                         self._place,
-            'query_understanding_enabled':   'true',
-            'refinement_paths[]':            '/homes',
-            'room_types[]':                  'Entire home/apt',
-            'satori_version':                '1.2.0',
-            # 'section_offset': '0',
-            'screen_height':                 635,
-            'screen_size':                   'large',
-            'screen_width':                  2040,
-            'show_groupings':                'true',
-            'supports_for_you_v3':           'true',
-            'timezone_offset':               '-480',
-            'version':                       '1.6.5'
+            'operationName': 'ExploreSearch',
+            'locale':        'en',
+            'currency':      'USD',
+            'variables':     {
+                "request": {
+                    "metadataOnly":          False,
+                    "version":               "1.7.9",
+                    "itemsPerGrid":          20,
+                    "tabId":                 "home_tab",
+                    "refinementPaths":       ["/homes"],
+                    "placeId":               "ChIJ66UNqQ_q9kARqrR19TYkx8A",
+                    "source":                "search_blocks_selector_p1_flow",
+                    "searchType":            "search_query",
+                    "query":                 self._place,
+                    "cdnCacheSafe":          False,
+                    "simpleSearchTreatment": "simple_search_only",
+                    "treatmentFlags":        [
+                        "simple_search_1_1",
+                        "flexible_dates_options_extend_one_three_seven_days"
+                    ],
+                    "screenSize":            "small"
+                }
+            },
+            'extensions':    {
+                "persistedQuery": {
+                    "version":    1,
+                    "sha256Hash": "13aa9971e70fbf5ab888f2a851c765ea098d8ae68c81e1f4ce06e2046d91b6ea"
+                }
+            },
+            '_cb':           '8wv88gb4e4gw'
         }
 
         if params:
@@ -344,7 +325,28 @@ class BnbSpider(scrapy.Spider):
             for a in amenities:
                 query.append(('amenities[]', a))
 
-        return self._build_airbnb_url(_api_path, query)
+        url = self._build_airbnb_url(_api_path, query)
+        return url
+
+    def _get_search_headers(self):
+        """Get headers for search requests."""
+        if self._api_key is None:
+            self._api_key = self.settings.get('AIRBNB_API_KEY')
+
+        return {
+            'Content-Type':                     'application/json',
+            'Device-Memory':                    8,
+            'DPR':                              '2.625',
+            'ect':                              '4g',
+            'Referer':                          'https://www.airbnb.com/',
+            'User-Agent':                       'Mozilla/5.0 (Linux; Android 8.0; Pixel 2 Build/OPD3.170816.012) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Mobile Safari/537.36',
+            'Viewport-Width':                   1180,
+            'X-Airbnb-API-Key':                 self._api_key,
+            'X-Airbnb-GraphQL-Platform':        'web',
+            'X-Airbnb-GraphQL-Platform-Client': 'minimalist-niobe',
+            'X-CSRF-Token':                     'V4$.airbnb.com$88klQ0-SkSk$f0wWUrY3M_I37iPj33S8w3-shUgkwi4Dq63e19JPlGQ=',
+            'X-CSRF-Without-Token':             1,
+        }
 
     def _listing_api_request(self, listing, params):
         """Generate scrapy.Request for listing page."""
