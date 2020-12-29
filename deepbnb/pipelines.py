@@ -36,7 +36,8 @@ class BnbPipeline:
     ):
         """Class constructor."""
         self._feed_format = feed_format
-        self._fields_to_check = ['description', 'name', 'summary', 'notes']
+        # self._fields_to_check = ['description', 'name', 'summary', 'notes']
+        self._fields_to_check = ['description', 'name']
         self._minimum_monthly_discount = minimum_monthly_discount
         self._minimum_weekly_discount = minimum_weekly_discount
         self._minimum_photos = minimum_photos
@@ -121,7 +122,7 @@ class ElasticBnbPipeline:
             'business_travel_ready':  item['business_travel_ready'],
             'city':                   item['city'],
             'country':                item['country'],
-            'country_code':           item['country_code'],
+            # 'country_code':           item['country_code'],
             'coordinates':            {'lon': item['longitude'], 'lat': item['latitude']},
             'description':            item['description'],
             'host_id':                item['host_id'],
@@ -153,8 +154,8 @@ class ElasticBnbPipeline:
             'satisfaction_guest':     item['satisfaction_guest'],
             'star_rating':            item['star_rating'],
             'state':                  item['state'],
-            'state_short':            item['state_short'],
-            'summary':                item['summary'],
+            # 'state_short':            item['state_short'],
+            # 'summary':                item['summary'],
             'transit':                item['transit'],
             'url':                    item['url'],
             'weekly_price_factor':    item['weekly_price_factor']

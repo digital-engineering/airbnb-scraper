@@ -9,6 +9,7 @@ from deepbnb.api.ApiBase import ApiBase
 
 
 class ExploreSearch(ApiBase):
+    """Class to interact with the Airbnb ExploreSearch API"""
 
     @staticmethod
     def add_search_params(params, response):
@@ -35,6 +36,15 @@ class ExploreSearch(ApiBase):
         if 'sw_lng' in parsed_q:
             params['sw_lng'] = parsed_q['sw_lng'][0]
 
+    def api_request(self, place, params=None, response=None, callback=None):
+        """Perform API request."""
+        request = response.follow if response else scrapy.Request
+        callback = callback or self._spider.parse
+        url = self.get_search_api_url(place, params)
+        headers = self._get_search_headers()
+
+        return request(url, callback, headers=headers)
+
     def get_paginated_search_params(self, response, data):
         """Consolidate search parameters and return result."""
         metadata = data['data']['dora']['exploreV3']['metadata']
@@ -54,32 +64,6 @@ class ExploreSearch(ApiBase):
         self.add_search_params(params, response)
 
         return params
-
-    @staticmethod
-    def _build_date_range(iso_date: str, range_spec: str):
-        """Calculate start and end dates for a range. Return start date and timedelta for number of days."""
-        base_date = date.fromisoformat(iso_date)
-        if range_spec.startswith('+-'):  # +-7
-            days = float(re.match(r'\+\-(\d+)', range_spec).group(1))
-            start_date = base_date - timedelta(days=days)
-            end_date = base_date + timedelta(days=days)
-        else:  # +0-3
-            result = re.match(r'\+(\d+)\-(\d+)', range_spec)
-            post_days = float(result.group(1))
-            pre_days = float(result.group(2))
-            start_date = base_date - timedelta(days=pre_days)
-            end_date = base_date + timedelta(days=post_days)
-
-        return start_date, end_date - start_date
-
-    def api_request(self, place, params=None, response=None, callback=None):
-        """Perform API request."""
-        request = response.follow if response else scrapy.Request
-        callback = callback or self._spider.parse
-        url = self.get_search_api_url(place, params)
-        headers = self._get_search_headers()
-
-        return request(url, callback, headers=headers)
 
     def get_search_api_url(self, place, params=None):
         _api_path = '/api/v3/ExploreSearch'
@@ -169,3 +153,21 @@ class ExploreSearch(ApiBase):
                 for j in range(checkout_range.days + 1):  # + 1 to include end date
                     params['checkout'] = self._spider._checkout = str(checkout_start_date + timedelta(days=j))
                     yield self.api_request(params, callback=self._spider.parse_landing_page)
+
+    @staticmethod
+    def _build_date_range(iso_date: str, range_spec: str):
+        """Calculate start and end dates for a range. Return start date and timedelta for number of days."""
+        base_date = date.fromisoformat(iso_date)
+        if range_spec.startswith('+-'):  # +-7
+            days = float(re.match(r'\+\-(\d+)', range_spec).group(1))
+            start_date = base_date - timedelta(days=days)
+            end_date = base_date + timedelta(days=days)
+        else:  # +0-3
+            result = re.match(r'\+(\d+)\-(\d+)', range_spec)
+            post_days = float(result.group(1))
+            pre_days = float(result.group(2))
+            start_date = base_date - timedelta(days=pre_days)
+            end_date = base_date + timedelta(days=post_days)
+
+        return start_date, end_date - start_date
+

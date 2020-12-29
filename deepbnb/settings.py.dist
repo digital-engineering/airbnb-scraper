@@ -104,7 +104,6 @@ FEED_EXPORT_FIELDS = [
     'weekly_price_factor',
     'room_type',
     'person_capacity',
-    'summary',
     'amenities',
     'review_count',
     'review_score',

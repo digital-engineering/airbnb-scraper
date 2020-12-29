@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import json
+import lxml.html
 import scrapy
 
 from deepbnb.items import DeepbnbItem
@@ -8,6 +9,12 @@ from deepbnb.api.PdpPlatformSections import PdpPlatformSections
 
 
 class AirbnbSpider(scrapy.Spider):
+    """Airbnb Spider
+
+    Perform a search, collect data from search results, cache that data, then scrape each listing individually to
+    obtain additional information, and finally compile the data together into a DeepbnbItem.
+    """
+
     name = 'airbnb'
     allowed_domains = ['airbnb.com']
     default_currency = 'USD'
@@ -88,15 +95,14 @@ class AirbnbSpider(scrapy.Spider):
         # params = {'_format': 'for_rooms_show', 'key': self._api_key}
         params = {'key': self._explore_search._api_key}
         self._explore_search.add_search_params(params, response)
-        listings = self._get_listings_from_sections(data['data']['dora']['exploreV3']['sections'])
-        for listing in listings:  # request each property page
-            listing_id = listing['listing']['id']
+        listing_ids = self._get_listings_from_sections(data['data']['dora']['exploreV3']['sections'])
+        for listing_id in listing_ids:  # request each property page
             if listing_id in self._ids_seen:
                 continue  # filter duplicates
 
             self._ids_seen.add(listing_id)
 
-            yield self._pdp_platform_sections.listing_api_request(listing)
+            yield self._pdp_platform_sections.listing_api_request(listing_id)
 
     def parse_landing_page(self, response):
         """Parse search response and generate URLs for all searches, then perform them."""
@@ -111,6 +117,86 @@ class AirbnbSpider(scrapy.Spider):
 
         yield self._explore_search.api_request(
             place=self._place, params=search_params, response=response, callback=self.parse)
+
+    def parse_listing_contents(self, response):
+        """Obtain data from an individual listing page."""
+        data = self.read_data(response)
+        pdp_sections = data['data']['merlin']['pdpSections']
+        sections = pdp_sections['sections']
+        metadata = pdp_sections['metadata']
+        logging_data = metadata['loggingContext']['eventDataLogging']
+        amenities = [s for s in sections if s['sectionId'] == 'AMENITIES_DEFAULT'][0]['section']
+        description_section = [s for s in sections if s['sectionId'] == 'DESCRIPTION_DEFAULT'][0]['section']
+        guest_access_list = [g['amenities'] for g in amenities['seeAllAmenitiesGroups'] if g['title'] == 'Guest access']
+        host_profile = [s for s in sections if s['sectionId'] == 'HOST_PROFILE_DEFAULT'][0]['section']
+        location = [s for s in sections if s['sectionId'] == 'LOCATION_DEFAULT'][0]['section']
+        policies = [s for s in sections if s['sectionId'] == 'POLICIES_DEFAULT'][0]['section']
+        listing_id = pdp_sections['id']
+        listing_data_cached = self._data_cache[listing_id]
+        item = DeepbnbItem(
+            id=listing_id,
+            access=[{'title': g['title'], 'subtitle': g['subtitle']}
+                    for g in guest_access_list[0]] if guest_access_list else None,
+            additional_house_rules=policies['additionalHouseRules'],
+            allows_events='No parties or events' in [r['title'] for r in policies['houseRules']],
+            amenities=listing_data_cached['amenities'],
+            amenity_ids=listing_data_cached['amenity_ids'],
+            avg_rating=listing_data_cached['avg_rating'],
+            bathrooms=listing_data_cached['bathrooms'],
+            bedrooms=listing_data_cached['bedrooms'],
+            beds=listing_data_cached['beds'],
+            business_travel_ready=listing_data_cached['business_travel_ready'],
+            city=listing_data_cached.get('city', self._geography['city']),
+            country=self._geography['country'],
+            description=self._html_to_text(description_section['htmlDescription']['htmlText']),
+            host_id=listing_data_cached['host_id'],
+            house_rules=[r['title'] for r in policies['houseRules']],
+            is_hotel=metadata['bookingPrefetchData']['isHotelRatePlanEnabled'],
+            latitude=listing_data_cached['latitude'],
+            listing_expectations=(
+                [{'title': p['title'], 'subtitle': p['subtitle']} for p in policies['listingExpectations']]),
+            longitude=listing_data_cached['longitude'],
+            # max_nights=listing.get('max_nights'),
+            # min_nights=listing['min_nights'],
+            monthly_price_factor=listing_data_cached['monthly_price_factor'],
+            name=listing_data_cached.get('name', listing_id),
+            neighborhood_overview=listing_data_cached.get('neighborhood_overview'),
+            # notes=listing['sectioned_description']['notes'],
+            person_capacity=listing_data_cached['person_capacity'],
+            photo_count=listing_data_cached['photo_count'],
+            photos=listing_data_cached['photos'],
+            place_id=self._geography['placeId'],
+            price_rate=listing_data_cached['price_rate'],
+            price_rate_type=listing_data_cached['price_rate_type'],
+            province=self._geography.get('province'),
+            rating_accuracy=logging_data['accuracyRating'],
+            rating_checkin=logging_data['checkinRating'],
+            rating_cleanliness=logging_data['cleanlinessRating'],
+            rating_communication=logging_data['communicationRating'],
+            rating_location=logging_data['locationRating'],
+            rating_value=logging_data['valueRating'],
+            review_count=listing_data_cached['review_count'],
+            room_and_property_type=listing_data_cached['room_and_property_type'],
+            room_type=listing_data_cached['room_type'],
+            room_type_category=listing_data_cached['room_type_category'],
+            satisfaction_guest=logging_data['guestSatisfactionOverall'],
+            star_rating=listing_data_cached['star_rating'],
+            state=self._geography['state'],
+            # summary=listing['sectioned_description']['summary'],
+            total_price=listing_data_cached['total_price'],
+            url="https://www.airbnb.com/rooms/{}".format(listing_id),
+            weekly_price_factor=listing_data_cached['weekly_price_factor']
+        )
+
+        self._get_detail_property(item, 'transit', 'Getting around', location['seeAllLocationDetails'], 'content')
+        self._get_detail_property(item, 'interaction', 'During your stay', host_profile['hostInfos'], 'html')
+
+        return item
+
+    def _get_detail_property(self, item, prop, title, prop_list, key):
+        """Search for matching title in property list for prop. If exists, add htmlText for key to item."""
+        if title in [i['title'] for i in prop_list]:
+            item[prop] = self._html_to_text([i[key]['htmlText'] for i in prop_list if i['title'] == title][0])
 
     def read_data(self, response):
         """Read response data as json"""
@@ -146,22 +232,58 @@ class AirbnbSpider(scrapy.Spider):
         if self._sw_lng:
             params['sw_lng'] = self._sw_lng
 
-        if not self._checkin:  # assume not self._checkout also
+        if self._checkin:  # assume self._checkout also
+            checkin_range_spec, checkout_range_spec = self._process_checkin_vars()
+            yield from self._explore_search.perform_checkin_start_requests(checkin_range_spec, checkout_range_spec,
+                                                                           params)
+        else:
             yield self._explore_search.api_request(self._place, params, callback=self.parse_landing_page)
 
-        checkin_range_spec, checkout_range_spec = self._process_checkin_vars()
+    def _collect_listing_data(self, listing_item):
+        """Collect listing data from search results, save in _data_cache. All listing data is aggregated together in the
+        parse_listing_contents method."""
+        listing = listing_item['listing']
+        pricing = listing_item['pricingQuote']
 
-        # perform request(s)
-        yield from self._explore_search.perform_checkin_start_requests(checkin_range_spec, checkout_range_spec, params)
+        self._data_cache[listing['id']] = {
+            # get general data
+            'amenities':              listing['previewAmenityNames'],
+            'amenity_ids':            listing['amenityIds'],
+            'avg_rating':             listing['avgRating'],
+            'bathrooms':              listing['bathrooms'],
+            'bedrooms':               listing['bedrooms'],
+            'beds':                   listing['beds'],
+            'business_travel_ready':  listing['isBusinessTravelReady'],
+            'host_id':                listing['user']['id'],
+            'latitude':               listing['lat'],
+            'longitude':              listing['lng'],
+            'name':                   listing['name'],
+            'neighborhood_overview':  listing['neighborhoodOverview'],
+            'person_capacity':        listing['personCapacity'],
+            'photo_count':            listing['pictureCount'],
+            'photos':                 [p['picture'] for p in listing['contextualPictures']],
+            'review_count':           listing['reviewsCount'],
+            'room_and_property_type': listing['roomAndPropertyType'],
+            'room_type':              listing['roomType'],
+            'room_type_category':     listing['roomTypeCategory'],
+            'star_rating':            listing['starRating'],
+
+            # get pricing data
+            'monthly_price_factor':   pricing['monthlyPriceFactor'],
+            'weekly_price_factor':    pricing['weeklyPriceFactor'],
+            'price_rate':             pricing['rateWithServiceFee']['amount'],
+            'price_rate_type':        pricing['rateType'],
+            # use total price if dates given, price rate otherwise. can't show total price if there are no dates.
+            'total_price':            pricing['price']['total']['amount'] if self._checkin else None
+        }
 
     def _get_listings_from_sections(self, sections):
         """Get listings from sections, also collect some data and save it for later. Double check prices are correct,
         because airbnb switches to """
-        listings = []
+        listing_ids = []
         for section in [s for s in sections if s['sectionComponentType'] == 'listings_ListingsGrid_Explore']:
-            for listing in section.get('items'):
-                listing_id = listing['listing']['id']
-                pricing = listing['pricingQuote']
+            for listing_item in section.get('items'):
+                pricing = listing_item['pricingQuote']
                 rate_with_service_fee = pricing['rateWithServiceFee']['amount']
 
                 # To account for results where price_max was specified as monthly but quoted rate is nightly, calculate
@@ -172,37 +294,10 @@ class AirbnbSpider(scrapy.Spider):
                         and (rate_with_service_fee * 28) > self._price_max):
                     continue
 
-                self._data_cache[listing_id] = {}
+                self._collect_listing_data(listing_item)
+                listing_ids.append(listing_item['listing']['id'])
 
-                # get general data
-                self._data_cache[listing_id]['amenities'] = listing['previewAmenityNames']
-                self._data_cache[listing_id]['amenity_ids'] = listing['amenityIds']
-
-                self._data_cache[listing_id]['bathrooms'] = listing['bathrooms']
-                self._data_cache[listing_id]['bedrooms'] = listing['bedrooms']
-                self._data_cache[listing_id]['beds'] = listing['beds']
-
-                self._data_cache[listing_id]['business_travel_ready'] = listing['isBusinessTravelReady']
-
-                self._data_cache[listing_id]['latitude'] = listing['lat']
-                self._data_cache[listing_id]['longitude'] = listing['lng']
-
-                # get pricing data
-                self._data_cache[listing_id]['monthly_price_factor'] = pricing['monthlyPriceFactor']
-                self._data_cache[listing_id]['weekly_price_factor'] = pricing['weeklyPriceFactor']
-
-                if self._checkin:  # use total price if dates given, price rate otherwise
-                    self._data_cache[listing_id]['price_rate'] = pricing['rateWithServiceFee']['amount']
-                    self._data_cache[listing_id]['price_rate_type'] = pricing['rateType']
-                    self._data_cache[listing_id]['total_price'] = pricing['price']['total']['amount']
-                else:
-                    self._data_cache[listing_id]['price_rate'] = pricing['rateWithServiceFee']['amount']
-                    self._data_cache[listing_id]['price_rate_type'] = pricing['rateType']
-                    self._data_cache[listing_id]['total_price'] = None  # can't show total price if there are no dates
-
-                listings.append(listing)
-
-        return listings
+        return listing_ids
 
     @staticmethod
     def _get_neighborhoods(data):
@@ -225,71 +320,9 @@ class AirbnbSpider(scrapy.Spider):
 
         return neighborhoods
 
-    def parse_listing_contents(self, response):
-        """Obtain data from an individual listing page."""
-        data = self.read_data(response)
-        sections = data['data']['merlin']['pdpSections']['sections']
-        policies = [s for s in sections if s['sectionId'] == 'POLICIES_DEFAULT'][0]
-        listing_id = data['data']['merlin']['pdpSections']['id']
-        listing_data_cached = self._data_cache[listing_id]
-        item = DeepbnbItem(
-            id=listing_id,
-            # access=listing['sectioned_description']['access'],
-            additional_house_rules=policies['additionalHouseRules'],
-            # allows_events=listing['guest_controls']['allows_events'],
-            amenities=listing_data_cached['amenities'],
-            amenity_ids=listing_data_cached['amenity_ids'],
-            bathrooms=listing_data_cached['bathrooms'],
-            bedrooms=listing_data_cached['bedrooms'],
-            beds=listing_data_cached['beds'],
-            business_travel_ready=listing_data_cached['business_travel_ready'],
-            city=listing_data_cached.get('city', self._geography['city']),
-            country=self._geography['country'],
-            # country_code=listing.get('country_code', self._geography['country_code']),
-            description=listing['sectioned_description']['description'],
-            host_id=listing['primary_host']['id'],
-            house_rules=listing['sectioned_description']['house_rules'],
-            is_hotel=listing['is_hotel'],
-            latitude=listing_data_cached['latitude'],
-            longitude=listing_data_cached['longitude'],
-            max_nights=listing.get('max_nights'),
-            min_nights=listing['min_nights'],
-            monthly_price_factor=listing_data_cached['monthly_price_factor'],
-            name=listing.get('name', listing_id),
-            neighborhood_overview=listing['sectioned_description']['neighborhood_overview'],
-            notes=listing['sectioned_description']['notes'],
-            person_capacity=listing['person_capacity'],
-            photo_count=len(listing['photos']),
-            photos=listing['photos'],
-            place_id=self._geography['place_id'],
-            price_rate=listing_data_cached['price_rate'],
-            price_rate_type=listing_data_cached['price_rate_type'],
-            province=self._geography.get('province'),
-            rating_accuracy=listing['p3_event_data_logging']['accuracy_rating'],
-            rating_checkin=listing['p3_event_data_logging']['checkin_rating'],
-            rating_cleanliness=listing['p3_event_data_logging']['cleanliness_rating'],
-            rating_communication=listing['p3_event_data_logging']['communication_rating'],
-            rating_location=listing['p3_event_data_logging']['location_rating'],
-            rating_value=listing['p3_event_data_logging']['value_rating'],
-            review_count=listing['review_details_interface']['review_count'],
-            review_score=listing['review_details_interface']['review_score'],
-            room_and_property_type=listing['room_and_property_type'],
-            room_type=listing['room_type_category'],
-            satisfaction_guest=listing['p3_event_data_logging']['guest_satisfaction_overall'],
-            star_rating=listing['star_rating'],
-            state=self._geography['state'],
-            state_short=self._geography['state_short'],
-            summary=listing['sectioned_description']['summary'],
-            total_price=listing_data_cached['total_price'],
-            transit=listing['sectioned_description']['transit'],
-            url="https://www.airbnb.com/rooms/{}".format(listing_id),
-            weekly_price_factor=listing_data_cached['weekly_price_factor']
-        )
-
-        if 'interaction' in listing['sectioned_description'] and listing['sectioned_description']['interaction']:
-            item['interaction'] = listing['sectioned_description']['interaction']
-
-        return item
+    @staticmethod
+    def _html_to_text(html):
+        return lxml.html.document_fromstring(html).text_content()
 
     def _process_checkin_vars(self) -> tuple:
         """Determine if a range is specified, if so, extract ranges and return as variables.
