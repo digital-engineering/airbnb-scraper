@@ -1,4 +1,4 @@
-from elasticsearch_dsl import Boolean, Document, Integer, Keyword, Text, GeoPoint, Float, Nested
+from elasticsearch_dsl import Boolean, Document, Integer, Keyword, Text, GeoPoint, Float
 from elasticsearch_dsl.connections import connections
 
 connections.create_connection(hosts=['localhost'])
@@ -11,13 +11,13 @@ class Listing(Document):
     allows_events = Boolean()
     amenities = Keyword(multi=True)
     amenity_ids = Keyword(multi=True)
+    avg_rating = Float()
     bathrooms = Float()
     bedrooms = Integer()
     beds = Integer()
     business_travel_ready = Boolean()
     city = Text(fields={'keyword': Keyword()}, required=True)
     country = Text(fields={'keyword': Keyword()}, required=True)
-    country_code = Text(fields={'keyword': Keyword()}, required=True)
     coordinates = GeoPoint()
     description = Text()
     host_id = Integer(fields={'keyword': Keyword()})
@@ -29,7 +29,7 @@ class Listing(Document):
     monthly_price_factor = Float()
     name = Text(fields={'keyword': Keyword()}, required=True)
     neighborhood_overview = Text()
-    notes = Text()
+    # notes = Text()
     person_capacity = Integer()
     photo_count = Integer()
     photos = Keyword(multi=True)
@@ -37,21 +37,19 @@ class Listing(Document):
     price_rate = Float()
     price_rate_type = Text(fields={'keyword': Keyword()}, required=True)
     province = Text(fields={'keyword': Keyword()})
-    rating_accuracy = Integer()
-    rating_checkin = Integer()
-    rating_cleanliness = Integer()
-    rating_communication = Integer()
-    rating_location = Integer()
-    rating_value = Integer()
+    rating_accuracy = Float()
+    rating_checkin = Float()
+    rating_cleanliness = Float()
+    rating_communication = Float()
+    rating_location = Float()
+    rating_value = Float()
     review_count = Integer()
-    review_score = Integer()
     room_and_property_type = Text(fields={'keyword': Keyword()}, required=True)
     room_type = Text(fields={'keyword': Keyword()}, required=True)
+    room_type_category = Text(fields={'keyword': Keyword()}, required=True)
     satisfaction_guest = Float()
     star_rating = Float()
     state = Text(fields={'keyword': Keyword()}, required=True)
-    state_short = Text(fields={'keyword': Keyword()}, required=True)
-    summary = Text()
     transit = Text()
     url = Text(fields={'keyword': Keyword()}, required=True)
     weekly_price_factor = Float()
@@ -73,6 +71,3 @@ class ListingQuote(Document):
 def setup():
     # Create mapping in ElasticSearch - run this manually on setup
     Listing.init()
-
-
-# setup()

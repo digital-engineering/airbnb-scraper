@@ -119,7 +119,8 @@ class AirbnbSpider(scrapy.Spider):
             place=self._place, params=search_params, response=response, callback=self.parse)
 
     def parse_listing_contents(self, response):
-        """Obtain data from an individual listing page."""
+        """Obtain data from an individual listing page, combine with cached data, and return DeepbnbItem."""
+        # collect data
         data = self.read_data(response)
         pdp_sections = data['data']['merlin']['pdpSections']
         sections = pdp_sections['sections']
@@ -131,12 +132,13 @@ class AirbnbSpider(scrapy.Spider):
         host_profile = [s for s in sections if s['sectionId'] == 'HOST_PROFILE_DEFAULT'][0]['section']
         location = [s for s in sections if s['sectionId'] == 'LOCATION_DEFAULT'][0]['section']
         policies = [s for s in sections if s['sectionId'] == 'POLICIES_DEFAULT'][0]['section']
+
+        # structure data
         listing_id = pdp_sections['id']
         listing_data_cached = self._data_cache[listing_id]
         item = DeepbnbItem(
             id=listing_id,
-            access=[{'title': g['title'], 'subtitle': g['subtitle']}
-                    for g in guest_access_list[0]] if guest_access_list else None,
+            access=self._render_title(guest_access_list[0]) if guest_access_list else None,
             additional_house_rules=policies['additionalHouseRules'],
             allows_events='No parties or events' in [r['title'] for r in policies['houseRules']],
             amenities=listing_data_cached['amenities'],
@@ -153,8 +155,7 @@ class AirbnbSpider(scrapy.Spider):
             house_rules=[r['title'] for r in policies['houseRules']],
             is_hotel=metadata['bookingPrefetchData']['isHotelRatePlanEnabled'],
             latitude=listing_data_cached['latitude'],
-            listing_expectations=(
-                [{'title': p['title'], 'subtitle': p['subtitle']} for p in policies['listingExpectations']]),
+            listing_expectations=self._render_title(policies['listingExpectations']) if policies else None,
             longitude=listing_data_cached['longitude'],
             # max_nights=listing.get('max_nights'),
             # min_nights=listing['min_nights'],
@@ -234,12 +235,47 @@ class AirbnbSpider(scrapy.Spider):
 
         if self._checkin:  # assume self._checkout also
             checkin_range_spec, checkout_range_spec = self._process_checkin_vars()
-            yield from self._explore_search.perform_checkin_start_requests(checkin_range_spec, checkout_range_spec,
-                                                                           params)
+            yield from self._explore_search.perform_checkin_start_requests(
+                checkin_range_spec, checkout_range_spec, params)
         else:
             yield self._explore_search.api_request(self._place, params, callback=self.parse_landing_page)
 
-    def _collect_listing_data(self, listing_item):
+    @staticmethod
+    def _get_neighborhoods(data):
+        """Get all neighborhoods in an area if they exist."""
+        neighborhoods = {}
+        meta = data['explore_tabs'][0]['home_tab_metadata']
+        if meta['listings_count'] < 300:
+            return neighborhoods
+
+        for section in meta['filters']['sections']:
+            if section['filter_section_id'] != 'neighborhoods':
+                continue
+            for item in section['items']:
+                key = item['title']
+                neighborhoods[key] = item
+                for param in item['params']:
+                    if param['key'] == 'neighborhood_ids':
+                        neighborhoods[key]['id'] = param['value']
+                        break
+
+        return neighborhoods
+
+    @staticmethod
+    def _html_to_text(html: str) -> str:
+        return lxml.html.document_fromstring(html).text_content()
+
+    @staticmethod
+    def _render_title(title_list: list) -> str:
+        """Render list of objects with titles and subtitles into string."""
+        lines = []
+        for t in title_list:
+            line = '{}: {}'.format(t['title'], t['subtitle']) if t.get('subtitle') else t.get('title')
+            lines.append(line)
+
+        return '\n'.join(lines)
+
+    def _collect_listing_data(self, listing_item: dict):
         """Collect listing data from search results, save in _data_cache. All listing data is aggregated together in the
         parse_listing_contents method."""
         listing = listing_item['listing']
@@ -277,7 +313,7 @@ class AirbnbSpider(scrapy.Spider):
             'total_price':            pricing['price']['total']['amount'] if self._checkin else None
         }
 
-    def _get_listings_from_sections(self, sections):
+    def _get_listings_from_sections(self, sections: list) -> list:
         """Get listings from sections, also collect some data and save it for later. Double check prices are correct,
         because airbnb switches to """
         listing_ids = []
@@ -298,31 +334,6 @@ class AirbnbSpider(scrapy.Spider):
                 listing_ids.append(listing_item['listing']['id'])
 
         return listing_ids
-
-    @staticmethod
-    def _get_neighborhoods(data):
-        """Get all neighborhoods in an area if they exist."""
-        neighborhoods = {}
-        meta = data['explore_tabs'][0]['home_tab_metadata']
-        if meta['listings_count'] < 300:
-            return neighborhoods
-
-        for section in meta['filters']['sections']:
-            if section['filter_section_id'] != 'neighborhoods':
-                continue
-            for item in section['items']:
-                key = item['title']
-                neighborhoods[key] = item
-                for param in item['params']:
-                    if param['key'] == 'neighborhood_ids':
-                        neighborhoods[key]['id'] = param['value']
-                        break
-
-        return neighborhoods
-
-    @staticmethod
-    def _html_to_text(html):
-        return lxml.html.document_fromstring(html).text_content()
 
     def _process_checkin_vars(self) -> tuple:
         """Determine if a range is specified, if so, extract ranges and return as variables.

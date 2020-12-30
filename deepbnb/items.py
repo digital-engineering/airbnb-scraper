@@ -37,7 +37,7 @@ class DeepbnbItem(scrapy.Item):
     monthly_price_factor = scrapy.Field()
     name = scrapy.Field()
     neighborhood_overview = scrapy.Field()
-    notes = scrapy.Field()
+    # notes = scrapy.Field()
     person_capacity = scrapy.Field()
     photo_count = scrapy.Field()
     photos = scrapy.Field()
