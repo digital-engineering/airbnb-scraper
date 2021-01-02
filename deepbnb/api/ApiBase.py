@@ -9,13 +9,16 @@ class ApiBase:
         self._api_key = api_key
         self._spider = spider
 
+    @property
+    def api_key(self):
+        return self._api_key
+
     @staticmethod
     def _build_airbnb_url(path, query=None):
         if query is not None:
             query = urlencode(query)
 
-        parts = ['https', 'www.airbnb.com', path, None, query, None]
-        return urlunparse(parts)
+        return urlunparse(['https', 'www.airbnb.com', path, None, query, None])
 
     @staticmethod
     def _fix_json_params(query):

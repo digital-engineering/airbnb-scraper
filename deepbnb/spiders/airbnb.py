@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 import json
 import lxml.html
+import re
 import scrapy
+
+from typing import Union
 
 from deepbnb.items import DeepbnbItem
 from deepbnb.api.ExploreSearch import ExploreSearch
@@ -39,7 +42,6 @@ class AirbnbSpider(scrapy.Spider):
     ):
         """Class constructor."""
         super().__init__(**kwargs)
-        self._api_key = None
         self._checkin = checkin
         self._checkout = checkout
         self._currency = currency
@@ -51,6 +53,7 @@ class AirbnbSpider(scrapy.Spider):
         self._explore_search = None
         self._pdp_platform_sections = None
         self._place = query
+        self._regex_amenity_id = re.compile(r'^([a-z]+_)+([0-9]+)_')
         self._search_params = {}
         self._set_price_params(max_price, min_price)
         self._sw_lat = sw_lat
@@ -93,7 +96,7 @@ class AirbnbSpider(scrapy.Spider):
 
         # handle listings
         # params = {'_format': 'for_rooms_show', 'key': self._api_key}
-        params = {'key': self._explore_search._api_key}
+        params = {'key': self._explore_search.api_key}
         self._explore_search.add_search_params(params, response)
         listing_ids = self._get_listings_from_sections(data['data']['dora']['exploreV3']['sections'])
         for listing_id in listing_ids:  # request each property page
@@ -120,29 +123,36 @@ class AirbnbSpider(scrapy.Spider):
 
     def parse_listing_contents(self, response):
         """Obtain data from an individual listing page, combine with cached data, and return DeepbnbItem."""
-        # collect data
+        # Collect base data
         data = self.read_data(response)
         pdp_sections = data['data']['merlin']['pdpSections']
         sections = pdp_sections['sections']
         metadata = pdp_sections['metadata']
+
         logging_data = metadata['loggingContext']['eventDataLogging']
-        amenities = [s for s in sections if s['sectionId'] == 'AMENITIES_DEFAULT'][0]['section']
+
+        # Get sections
+        amenities_section = [s for s in sections if s['sectionId'] == 'AMENITIES_DEFAULT'][0]['section']
         description_section = [s for s in sections if s['sectionId'] == 'DESCRIPTION_DEFAULT'][0]['section']
-        guest_access_list = [g['amenities'] for g in amenities['seeAllAmenitiesGroups'] if g['title'] == 'Guest access']
         host_profile = [s for s in sections if s['sectionId'] == 'HOST_PROFILE_DEFAULT'][0]['section']
         location = [s for s in sections if s['sectionId'] == 'LOCATION_DEFAULT'][0]['section']
         policies = [s for s in sections if s['sectionId'] == 'POLICIES_DEFAULT'][0]['section']
 
-        # structure data
+        # Collect amenity data
+        amenities_groups = amenities_section['seeAllAmenitiesGroups']
+        amenities_access = [g['amenities'] for g in amenities_groups if g['title'] == 'Guest access']
+        amenities_avail = [amenity for g in amenities_groups for amenity in g['amenities'] if amenity['available']]
+
+        # Structure data
         listing_id = pdp_sections['id']
         listing_data_cached = self._data_cache[listing_id]
         item = DeepbnbItem(
             id=listing_id,
-            access=self._render_title(guest_access_list[0]) if guest_access_list else None,
+            access=self._render_titles(amenities_access[0]) if amenities_access else None,
             additional_house_rules=policies['additionalHouseRules'],
             allows_events='No parties or events' in [r['title'] for r in policies['houseRules']],
-            amenities=listing_data_cached['amenities'],
-            amenity_ids=listing_data_cached['amenity_ids'],
+            amenities=self._render_titles(amenities_avail, sep=' - ', join=False),
+            amenity_ids=list(self._get_amenity_ids(amenities_avail)),
             avg_rating=listing_data_cached['avg_rating'],
             bathrooms=listing_data_cached['bathrooms'],
             bedrooms=listing_data_cached['bedrooms'],
@@ -155,7 +165,7 @@ class AirbnbSpider(scrapy.Spider):
             house_rules=[r['title'] for r in policies['houseRules']],
             is_hotel=metadata['bookingPrefetchData']['isHotelRatePlanEnabled'],
             latitude=listing_data_cached['latitude'],
-            listing_expectations=self._render_title(policies['listingExpectations']) if policies else None,
+            listing_expectations=self._render_titles(policies['listingExpectations']) if policies else None,
             longitude=listing_data_cached['longitude'],
             # max_nights=listing.get('max_nights'),
             # min_nights=listing['min_nights'],
@@ -193,6 +203,11 @@ class AirbnbSpider(scrapy.Spider):
         self._get_detail_property(item, 'interaction', 'During your stay', host_profile['hostInfos'], 'html')
 
         return item
+
+    def _get_amenity_ids(self, amenities: list):
+        for amenity in amenities:
+            match = self._regex_amenity_id.match(amenity['id'])
+            yield int(match.group(match.lastindex))
 
     def _get_detail_property(self, item, prop, title, prop_list, key):
         """Search for matching title in property list for prop. If exists, add htmlText for key to item."""
@@ -266,14 +281,14 @@ class AirbnbSpider(scrapy.Spider):
         return lxml.html.document_fromstring(html).text_content()
 
     @staticmethod
-    def _render_title(title_list: list) -> str:
+    def _render_titles(title_list: list, sep: str = ': ', join=True) -> Union[str, list]:
         """Render list of objects with titles and subtitles into string."""
         lines = []
         for t in title_list:
-            line = '{}: {}'.format(t['title'], t['subtitle']) if t.get('subtitle') else t.get('title')
+            line = '{}{}{}'.format(t['title'], sep, t['subtitle']) if t.get('subtitle') else t.get('title')
             lines.append(line)
 
-        return '\n'.join(lines)
+        return '\n'.join(lines) if join else lines
 
     def _collect_listing_data(self, listing_item: dict):
         """Collect listing data from search results, save in _data_cache. All listing data is aggregated together in the
@@ -283,8 +298,6 @@ class AirbnbSpider(scrapy.Spider):
 
         self._data_cache[listing['id']] = {
             # get general data
-            'amenities':              listing['previewAmenityNames'],
-            'amenity_ids':            listing['amenityIds'],
             'avg_rating':             listing['avgRating'],
             'bathrooms':              listing['bathrooms'],
             'bedrooms':               listing['bedrooms'],
