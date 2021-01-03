@@ -9,6 +9,7 @@ from typing import Union
 from deepbnb.items import DeepbnbItem
 from deepbnb.api.ExploreSearch import ExploreSearch
 from deepbnb.api.PdpPlatformSections import PdpPlatformSections
+from deepbnb.api.PdpReviews import PdpReviews
 
 
 class AirbnbSpider(scrapy.Spider):
@@ -52,8 +53,9 @@ class AirbnbSpider(scrapy.Spider):
         self._ne_lng = ne_lng
         self._explore_search = None
         self._pdp_platform_sections = None
+        self._pdp_reviews = None
         self._place = query
-        self._regex_amenity_id = re.compile(r'^([a-z]+_)+([0-9]+)_')
+        self._regex_amenity_id = re.compile(r'^([a-z0-9]+_)+([0-9]+)_')
         self._search_params = {}
         self._set_price_params(max_price, min_price)
         self._sw_lat = sw_lat
@@ -80,6 +82,10 @@ class AirbnbSpider(scrapy.Spider):
 
             yield params
 
+    @property
+    def geography(self):
+        return self._geography
+
     def parse(self, response, **kwargs):
         """Default parse method."""
         data = self.read_data(response)
@@ -95,7 +101,6 @@ class AirbnbSpider(scrapy.Spider):
             yield self._explore_search.api_request(place=self._place, params=next_section, response=response)
 
         # handle listings
-        # params = {'_format': 'for_rooms_show', 'key': self._api_key}
         params = {'key': self._explore_search.api_key}
         self._explore_search.add_search_params(params, response)
         listing_ids = self._get_listings_from_sections(data['data']['dora']['exploreV3']['sections'])
@@ -105,7 +110,7 @@ class AirbnbSpider(scrapy.Spider):
 
             self._ids_seen.add(listing_id)
 
-            yield self._pdp_platform_sections.listing_api_request(listing_id)
+            yield self._pdp_platform_sections.api_request(listing_id)
 
     def parse_landing_page(self, response):
         """Parse search response and generate URLs for all searches, then perform them."""
@@ -126,6 +131,7 @@ class AirbnbSpider(scrapy.Spider):
         # Collect base data
         data = self.read_data(response)
         pdp_sections = data['data']['merlin']['pdpSections']
+        listing_id = pdp_sections['id']
         sections = pdp_sections['sections']
         metadata = pdp_sections['metadata']
 
@@ -144,7 +150,6 @@ class AirbnbSpider(scrapy.Spider):
         amenities_avail = [amenity for g in amenities_groups for amenity in g['amenities'] if amenity['available']]
 
         # Structure data
-        listing_id = pdp_sections['id']
         listing_data_cached = self._data_cache[listing_id]
         item = DeepbnbItem(
             id=listing_id,
@@ -187,6 +192,7 @@ class AirbnbSpider(scrapy.Spider):
             rating_location=logging_data['locationRating'],
             rating_value=logging_data['valueRating'],
             review_count=listing_data_cached['review_count'],
+            reviews=self._pdp_reviews.api_request(listing_id, 50),
             room_and_property_type=listing_data_cached['room_and_property_type'],
             room_type=listing_data_cached['room_type'],
             room_type_category=listing_data_cached['room_type_category'],
@@ -204,16 +210,6 @@ class AirbnbSpider(scrapy.Spider):
 
         return item
 
-    def _get_amenity_ids(self, amenities: list):
-        for amenity in amenities:
-            match = self._regex_amenity_id.match(amenity['id'])
-            yield int(match.group(match.lastindex))
-
-    def _get_detail_property(self, item, prop, title, prop_list, key):
-        """Search for matching title in property list for prop. If exists, add htmlText for key to item."""
-        if title in [i['title'] for i in prop_list]:
-            item[prop] = self._html_to_text([i[key]['htmlText'] for i in prop_list if i['title'] == title][0])
-
     def read_data(self, response):
         """Read response data as json"""
         self.logger.debug(f"Parsing {response.url}")
@@ -227,6 +223,7 @@ class AirbnbSpider(scrapy.Spider):
 
         self._explore_search = ExploreSearch(self.settings.get('AIRBNB_API_KEY'), self)
         self._pdp_platform_sections = PdpPlatformSections(self.settings.get('AIRBNB_API_KEY'), self)
+        self._pdp_reviews = PdpReviews(self.settings.get('AIRBNB_API_KEY'), self)
 
         # get params from injected constructor values
         params = {}
@@ -278,6 +275,7 @@ class AirbnbSpider(scrapy.Spider):
 
     @staticmethod
     def _html_to_text(html: str) -> str:
+        """Get plaintext from HTML."""
         return lxml.html.document_fromstring(html).text_content()
 
     @staticmethod
@@ -326,9 +324,16 @@ class AirbnbSpider(scrapy.Spider):
             'total_price':            pricing['price']['total']['amount'] if self._checkin else None
         }
 
+    def _get_amenity_ids(self, amenities: list):
+        """Extract amenity id from `id` string field."""
+        for amenity in amenities:
+            match = self._regex_amenity_id.match(amenity['id'])
+            amenity_id = int(match.group(match.lastindex))
+            yield amenity_id
+
     def _get_listings_from_sections(self, sections: list) -> list:
         """Get listings from sections, also collect some data and save it for later. Double check prices are correct,
-        because airbnb switches to """
+        because airbnb switches to daily pricing if less than 28 days are selected (during a range search)."""
         listing_ids = []
         for section in [s for s in sections if s['sectionComponentType'] == 'listings_ListingsGrid_Explore']:
             for listing_item in section.get('items'):
@@ -347,6 +352,11 @@ class AirbnbSpider(scrapy.Spider):
                 listing_ids.append(listing_item['listing']['id'])
 
         return listing_ids
+
+    def _get_detail_property(self, item, prop, title, prop_list, key):
+        """Search for matching title in property list for prop. If exists, add htmlText for key to item."""
+        if title in [i['title'] for i in prop_list]:
+            item[prop] = self._html_to_text([i[key]['htmlText'] for i in prop_list if i['title'] == title][0])
 
     def _process_checkin_vars(self) -> tuple:
         """Determine if a range is specified, if so, extract ranges and return as variables.

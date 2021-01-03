@@ -1,4 +1,4 @@
-from elasticsearch_dsl import Boolean, Document, Integer, Keyword, Text, GeoPoint, Float
+from elasticsearch_dsl import Boolean, Document, Integer, Keyword, Text, GeoPoint, Float, Nested
 from elasticsearch_dsl.connections import connections
 
 connections.create_connection(hosts=['localhost'])
@@ -44,6 +44,7 @@ class Listing(Document):
     rating_location = Float()
     rating_value = Float()
     review_count = Integer()
+    reviews = Nested()
     room_and_property_type = Text(fields={'keyword': Keyword()}, required=True)
     room_type = Text(fields={'keyword': Keyword()}, required=True)
     room_type_category = Text(fields={'keyword': Keyword()}, required=True)

@@ -13,34 +13,34 @@ class ExploreSearch(ApiBase):
 
     @staticmethod
     def add_search_params(params, response):
-        parsed_q = parse_qs(urlparse(response.request.url).query)
-        if 'checkin' in parsed_q:
-            params['checkin'] = parsed_q['checkin'][0]
-            params['checkout'] = parsed_q['checkout'][0]
+        parsed_qs = parse_qs(urlparse(response.request.url).query)
+        if 'checkin' in parsed_qs:
+            params['checkin'] = parsed_qs['checkin'][0]
+            params['checkout'] = parsed_qs['checkout'][0]
 
-        if 'price_max' in parsed_q:
-            params['price_max'] = parsed_q['price_max'][0]
+        if 'price_max' in parsed_qs:
+            params['price_max'] = parsed_qs['price_max'][0]
 
-        if 'price_min' in parsed_q:
-            params['price_min'] = parsed_q['price_min'][0]
+        if 'price_min' in parsed_qs:
+            params['price_min'] = parsed_qs['price_min'][0]
 
-        if 'ne_lat' in parsed_q:
-            params['ne_lat'] = parsed_q['ne_lat'][0]
+        if 'ne_lat' in parsed_qs:
+            params['ne_lat'] = parsed_qs['ne_lat'][0]
 
-        if 'ne_lng' in parsed_q:
-            params['ne_lng'] = parsed_q['ne_lng'][0]
+        if 'ne_lng' in parsed_qs:
+            params['ne_lng'] = parsed_qs['ne_lng'][0]
 
-        if 'sw_lat' in parsed_q:
-            params['sw_lat'] = parsed_q['sw_lat'][0]
+        if 'sw_lat' in parsed_qs:
+            params['sw_lat'] = parsed_qs['sw_lat'][0]
 
-        if 'sw_lng' in parsed_q:
-            params['sw_lng'] = parsed_q['sw_lng'][0]
+        if 'sw_lng' in parsed_qs:
+            params['sw_lng'] = parsed_qs['sw_lng'][0]
 
     def api_request(self, place, params=None, response=None, callback=None):
         """Perform API request."""
         request = response.follow if response else scrapy.Request
         callback = callback or self._spider.parse
-        url = self.get_search_api_url(place, params)
+        url = self._get_url(place, params)
         headers = self._get_search_headers()
 
         return request(url, callback, headers=headers)
@@ -50,7 +50,7 @@ class ExploreSearch(ApiBase):
         metadata = data['data']['dora']['exploreV3']['metadata']
         pagination = metadata['paginationMetadata']
         filter_state = data['data']['dora']['exploreV3']['filters']['state']
-        place_id = self._spider._geography.get('place_id', metadata['geography']['placeId'])
+        place_id = self._spider.geography.get('place_id', metadata['geography']['placeId'])
         query = [fs['value']['stringValue'] for fs in filter_state if fs['key'] == 'query'][0]
         params = {
             'searchSessionId': pagination['searchSessionId'],
@@ -64,55 +64,6 @@ class ExploreSearch(ApiBase):
         self.add_search_params(params, response)
 
         return params
-
-    def get_search_api_url(self, place, params=None):
-        _api_path = '/api/v3/ExploreSearch'
-        query = {
-            'operationName': 'ExploreSearch',
-            'locale':        'en',
-            'currency':      'USD',
-            'variables':     {
-                "request": {
-                    "metadataOnly":          False,
-                    "version":               "1.7.9",
-                    "itemsPerGrid":          20,
-                    "tabId":                 "home_tab",
-                    "refinementPaths":       ["/homes"],
-                    "placeId":               "ChIJ66UNqQ_q9kARqrR19TYkx8A",
-                    "source":                "search_blocks_selector_p1_flow",
-                    "searchType":            "search_query",
-                    "query":                 place,
-                    "cdnCacheSafe":          False,
-                    "simpleSearchTreatment": "simple_search_only",
-                    "treatmentFlags":        [
-                        "simple_search_1_1",
-                        "flexible_dates_options_extend_one_three_seven_days"
-                    ],
-                    "screenSize":            "small"
-                }
-            },
-            'extensions':    {
-                "persistedQuery": {
-                    "version":    1,
-                    "sha256Hash": "13aa9971e70fbf5ab888f2a851c765ea098d8ae68c81e1f4ce06e2046d91b6ea"
-                }
-            },
-            '_cb':           '8wv88gb4e4gw'
-        }
-
-        if params:
-            query.update(params)
-
-        # if self.settings.get('PROPERTY_AMENITIES'):
-        #     amenities = self.settings.get('PROPERTY_AMENITIES').values()
-        #     query = list(query.items())  # convert dict to list of tuples because we need multiple identical keys
-        #     for a in amenities:
-        #         query.append(('amenities[]', a))
-
-        self._fix_json_params(query)
-        url = self._build_airbnb_url(_api_path, query)
-
-        return url
 
     def perform_checkin_start_requests(self, checkin_range_spec: str, checkout_range_spec: str, params: dict):
         """Perform requests for start URLs.
@@ -171,3 +122,50 @@ class ExploreSearch(ApiBase):
 
         return start_date, end_date - start_date
 
+    def _get_url(self, place, params=None):
+        _api_path = '/api/v3/ExploreSearch'
+        query = {
+            'operationName': 'ExploreSearch',
+            'locale':        'en',
+            'currency':      'USD',
+            'variables':     {
+                'request': {
+                    'metadataOnly':          False,
+                    'version':               '1.7.9',
+                    'itemsPerGrid':          20,
+                    'tabId':                 'home_tab',
+                    'refinementPaths':       ['/homes'],
+                    'placeId':               'ChIJ66UNqQ_q9kARqrR19TYkx8A',
+                    'source':                'search_blocks_selector_p1_flow',
+                    'searchType':            'search_query',
+                    'query':                 place,
+                    'cdnCacheSafe':          False,
+                    'simpleSearchTreatment': 'simple_search_only',
+                    'treatmentFlags':        [
+                        'simple_search_1_1',
+                        'flexible_dates_options_extend_one_three_seven_days'
+                    ],
+                    'screenSize':            'small'
+                }
+            },
+            'extensions':    {
+                'persistedQuery': {
+                    'version':    1,
+                    'sha256Hash': '13aa9971e70fbf5ab888f2a851c765ea098d8ae68c81e1f4ce06e2046d91b6ea'
+                }
+            },
+            '_cb':           '8wv88gb4e4gw'
+        }
+
+        if params:
+            query.update(params)
+
+        # if self.settings.get('PROPERTY_AMENITIES'):
+        #     amenities = self.settings.get('PROPERTY_AMENITIES').values()
+        #     query = list(query.items())  # convert dict to list of tuples because we need multiple identical keys
+        #     for a in amenities:
+        #         query.append(('amenities[]', a))
+
+        self._fix_json_params(query)
+
+        return self._build_airbnb_url(_api_path, query)

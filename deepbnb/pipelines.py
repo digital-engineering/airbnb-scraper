@@ -60,7 +60,7 @@ class BnbPipeline:
     def process_item(self, item, spider):
         """Drop items not fitting parameters. Open in browser if specified. Return accepted items."""
 
-        if self._skip_list and str(item['id']) in self._skip_list:
+        if self._skip_list and str(item.get('id')) in self._skip_list:
             raise DropItem('Item in skip list: {}'.format(item['id']))
 
         if self._property_type_blacklist and item['room_and_property_type'] in self._property_type_blacklist:

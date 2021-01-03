@@ -52,6 +52,7 @@ class DeepbnbItem(scrapy.Item):
     rating_location = scrapy.Field()
     rating_value = scrapy.Field()
     review_count = scrapy.Field()
+    reviews = scrapy.Field()
     room_and_property_type = scrapy.Field()
     room_type = scrapy.Field()
     room_type_category = scrapy.Field()

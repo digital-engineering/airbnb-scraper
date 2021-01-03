@@ -3,32 +3,36 @@
 Use Airbnb's unofficial API to efficiently search for rental properties. 
 Regex matching, ranged search, open matched properties in a browser, save to CSV, xlsx, or ElasticSearch (beta).
 
+
 ## Note
 
 Airbnb's API is subject to change at any moment, which would break this scraper. They've already changed it several times in the past. Also, using this probably violates their TOS. Please only use for educational or research purposes. If you hammer Airbnb's API they will probably block you.
 
+
 ## Installation (nix)
 
-    # Create venv
-    python3 -m venv env
-    
-    # Enable venv
-    . env/bin/activate
-    
-    # Install required packages
-    pip install -Ur requirements.txt
-    
-    # Create settings.py
-    cp deepbnb/settings.py.dist deepbnb/settings.py
-    
-    # @NOTE: Don't forget to set AIRBNB_API_KEY in settings.py. To find your API key, 
-    # search Airbnb using Chrome, open dev tools, and look for to the url parameter  
-    # named "key" in async requests to /api/v2/explore_tabs under the Network tab.
+```bash
+# Create venv
+python3 -m venv env
+
+# Enable venv
+. env/bin/activate
+
+# Install required packages
+pip install -Ur requirements.txt
+
+# Create settings.py
+cp deepbnb/settings.py.dist deepbnb/settings.py
+
+# @NOTE: Don't forget to set AIRBNB_API_KEY in settings.py. To find your API key, 
+# search Airbnb using Chrome, open dev tools, and look for to the url parameter  
+# named "key" in async requests to /api/v2/explore_tabs under the Network tab.
+```
+
 
 ## Configuration
 
 Edit `deepbnb/settings.py` for settings. I've created some custom settings which are documented below. The rest are documented in https://docs.scrapy.org/en/latest/topics/settings.html.
-
 
 
 ## Example Usage
@@ -173,7 +177,7 @@ command line using the `-s` flag as in the example above.
 
 ## Requirements
 
-* Python 3.6+
+* Python 3.9+
 * [Scrapy](http://scrapy.org/)
 * [openpyxl](https://openpyxl.readthedocs.io/en/default/#installation)
 * ElasticSearch 7+ if using elasticsearch pipeline

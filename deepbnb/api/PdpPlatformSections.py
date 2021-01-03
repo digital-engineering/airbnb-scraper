@@ -12,7 +12,7 @@ class PdpPlatformSections(ApiBase):
         'POLICIES_DEFAULT',
     ]
 
-    def listing_api_request(self, listing_id: str):
+    def api_request(self, listing_id: str):
         """Generate scrapy.Request for listing page."""
         _api_path = '/api/v3/PdpPlatformSections'
         query = {

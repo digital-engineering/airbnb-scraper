@@ -1,5 +1,6 @@
 import json
 
+from abc import abstractmethod
 from urllib.parse import urlencode, urlunparse
 
 
@@ -8,6 +9,10 @@ class ApiBase:
     def __init__(self, api_key, spider):
         self._api_key = api_key
         self._spider = spider
+
+    @abstractmethod
+    def api_request(self, **kwargs):
+        raise NotImplementedError('{} must implement the api_request method.'.format(self.__class__.__name__))
 
     @property
     def api_key(self):
@@ -28,17 +33,21 @@ class ApiBase:
 
     def _get_search_headers(self):
         """Get headers for search requests."""
-        return {
+        required_headers = {
+            'X-Airbnb-API-Key':          self._api_key,
+            'X-Airbnb-GraphQL-Platform': 'web',
+        }
+
+        return required_headers | {
+            # configurable parameters:
             'Content-Type':                     'application/json',
-            'Device-Memory':                    8,
+            'Device-Memory':                    '8',
             'DPR':                              '2.625',
             'ect':                              '4g',
             'Referer':                          'https://www.airbnb.com/',
             'User-Agent':                       'Mozilla/5.0 (Linux; Android 8.0; Pixel 2 Build/OPD3.170816.012) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Mobile Safari/537.36',
-            'Viewport-Width':                   1180,
-            'X-Airbnb-API-Key':                 self._api_key,
-            'X-Airbnb-GraphQL-Platform':        'web',
+            'Viewport-Width':                   '1180',
             'X-Airbnb-GraphQL-Platform-Client': 'minimalist-niobe',
             'X-CSRF-Token':                     'V4$.airbnb.com$88klQ0-SkSk$f0wWUrY3M_I37iPj33S8w3-shUgkwi4Dq63e19JPlGQ=',
-            'X-CSRF-Without-Token':             1,
+            'X-CSRF-Without-Token':             '1',
         }
