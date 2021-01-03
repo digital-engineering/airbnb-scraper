@@ -1,15 +1,35 @@
-# -*- coding: utf-8 -*-
 import scrapy
 import re
 
 from datetime import date, timedelta
+from logging import LoggerAdapter
+from scrapy import Spider
 from urllib.parse import parse_qs, urlparse
 
 from deepbnb.api.ApiBase import ApiBase
 
 
 class ExploreSearch(ApiBase):
-    """Class to interact with the Airbnb ExploreSearch API"""
+    """Airbnb API v3 Search Endpoint"""
+
+    def __init__(
+            self,
+            api_key: str,
+            logger: LoggerAdapter,
+            spider: Spider,
+            property_types: list,
+            geography: dict,
+            query: str,
+            checkin: str,
+            checkout: str
+    ):
+        super().__init__(api_key, logger)
+        self.__checkin = checkin
+        self.__checkout = checkout
+        self.__geography = geography
+        self.__property_types = property_types
+        self.__query = query
+        self.__spider = spider
 
     @staticmethod
     def add_search_params(params, response):
@@ -39,7 +59,7 @@ class ExploreSearch(ApiBase):
     def api_request(self, place, params=None, response=None, callback=None):
         """Perform API request."""
         request = response.follow if response else scrapy.Request
-        callback = callback or self._spider.parse
+        callback = callback or self.__spider.parse
         url = self._get_url(place, params)
         headers = self._get_search_headers()
 
@@ -50,12 +70,16 @@ class ExploreSearch(ApiBase):
         metadata = data['data']['dora']['exploreV3']['metadata']
         pagination = metadata['paginationMetadata']
         filter_state = data['data']['dora']['exploreV3']['filters']['state']
-        place_id = self._spider.geography.get('place_id', metadata['geography']['placeId'])
+        place_id = self.__geography.get('place_id', metadata['geography']['placeId'])
         query = [fs['value']['stringValue'] for fs in filter_state if fs['key'] == 'query'][0]
         params = {
-            'searchSessionId': pagination['searchSessionId'],
-            'place_id':        place_id,
-            'query':           query
+            'variables': {
+                'request': {
+                    'searchSessionId': pagination['searchSessionId'],
+                    'placeId':         place_id,
+                    'query':           query
+                }
+            }
         }
 
         # if pagination['hasNextPage']:
@@ -64,6 +88,20 @@ class ExploreSearch(ApiBase):
         self.add_search_params(params, response)
 
         return params
+
+    def parse_landing_page(self, response):
+        """Parse search response and generate URLs for all searches, then perform them."""
+        data = self.read_data(response)
+        search_params = self.get_paginated_search_params(response, data)
+        # neighborhoods = self._get_neighborhoods(data)
+
+        self.__geography = data['data']['dora']['exploreV3']['metadata']['geography']
+
+        self._logger.info(f"Geography:\n{self.__geography}")
+        # self.logger.info(f"Neighborhoods:\n{neighborhoods}")
+
+        yield self.api_request(
+            place=self.__query, params=search_params, response=response, callback=self.__spider.parse)
 
     def perform_checkin_start_requests(self, checkin_range_spec: str, checkout_range_spec: str, params: dict):
         """Perform requests for start URLs.
@@ -75,46 +113,46 @@ class ExploreSearch(ApiBase):
         """
         # single request for static start and end dates
         if not (checkin_range_spec or checkout_range_spec):  # simple start and end date
-            params['checkin'] = self._spider._checkin
-            params['checkout'] = self._spider._checkout
-            yield self.api_request(params, callback=self._spider.parse_landing_page)
+            params['checkin'] = self.__checkin
+            params['checkout'] = self.__checkout
+            yield self.api_request(params, callback=self.parse_landing_page)
 
         # multi request for dynamic start and static end date
         if checkin_range_spec and not checkout_range_spec:  # ranged start date, single end date, iterate over checkin range
-            checkin_start_date, checkin_range = self._build_date_range(self._spider._checkin, checkin_range_spec)
+            checkin_start_date, checkin_range = self._build_date_range(self.__checkin, checkin_range_spec)
             for i in range(checkin_range.days + 1):  # + 1 to include end date
-                params['checkin'] = self._spider._checkin = str(checkin_start_date + timedelta(days=i))
-                params['checkout'] = self._spider._checkout
-                yield self.api_request(params, callback=self._spider.parse_landing_page)
+                params['checkin'] = self.__checkin = str(checkin_start_date + timedelta(days=i))
+                params['checkout'] = self.__checkout
+                yield self.api_request(params, callback=self.parse_landing_page)
 
         # multi request for static start and dynamic end date
         if checkout_range_spec and not checkin_range_spec:  # ranged end date, single start date, iterate over checkout range
-            checkout_start_date, checkout_range = self._build_date_range(self._spider._checkout, checkout_range_spec)
+            checkout_start_date, checkout_range = self._build_date_range(self.__checkout, checkout_range_spec)
             for i in range(checkout_range.days + 1):  # + 1 to include end date
-                params['checkout'] = self._spider._checkout = str(checkout_start_date + timedelta(days=i))
-                params['checkin'] = self._spider._checkin
-                yield self.api_request(params, callback=self._spider.parse_landing_page)
+                params['checkout'] = self.__checkout = str(checkout_start_date + timedelta(days=i))
+                params['checkin'] = self.__checkin
+                yield self.api_request(params, callback=self.parse_landing_page)
 
         # double nested multi request, iterate over both start and end date ranges
         if checkout_range_spec and checkin_range_spec:
-            checkin_start_date, checkin_range = self._build_date_range(self._spider._checkin, checkin_range_spec)
-            checkout_start_date, checkout_range = self._build_date_range(self._spider._checkout, checkout_range_spec)
+            checkin_start_date, checkin_range = self._build_date_range(self.__checkin, checkin_range_spec)
+            checkout_start_date, checkout_range = self._build_date_range(self.__checkout, checkout_range_spec)
             for i in range(checkin_range.days + 1):  # + 1 to include end date
-                params['checkin'] = self._spider._checkin = str(checkin_start_date + timedelta(days=i))
+                params['checkin'] = self.__checkin = str(checkin_start_date + timedelta(days=i))
                 for j in range(checkout_range.days + 1):  # + 1 to include end date
-                    params['checkout'] = self._spider._checkout = str(checkout_start_date + timedelta(days=j))
-                    yield self.api_request(params, callback=self._spider.parse_landing_page)
+                    params['checkout'] = self.__checkout = str(checkout_start_date + timedelta(days=j))
+                    yield self.api_request(params, callback=self.parse_landing_page)
 
     @staticmethod
     def _build_date_range(iso_date: str, range_spec: str):
         """Calculate start and end dates for a range. Return start date and timedelta for number of days."""
         base_date = date.fromisoformat(iso_date)
         if range_spec.startswith('+-'):  # +-7
-            days = float(re.match(r'\+\-(\d+)', range_spec).group(1))
+            days = float(re.match(r'\+-(\d+)', range_spec).group(1))
             start_date = base_date - timedelta(days=days)
             end_date = base_date + timedelta(days=days)
         else:  # +0-3
-            result = re.match(r'\+(\d+)\-(\d+)', range_spec)
+            result = re.match(r'\+(\d+)-(\d+)', range_spec)
             post_days = float(result.group(1))
             pre_days = float(result.group(2))
             start_date = base_date - timedelta(days=pre_days)
@@ -135,10 +173,10 @@ class ExploreSearch(ApiBase):
                     'itemsPerGrid':          20,
                     'tabId':                 'home_tab',
                     'refinementPaths':       ['/homes'],
-                    'placeId':               'ChIJ66UNqQ_q9kARqrR19TYkx8A',
                     'source':                'search_blocks_selector_p1_flow',
                     'searchType':            'search_query',
                     'query':                 place,
+                    'roomTypes':             self.__property_types,
                     'cdnCacheSafe':          False,
                     'simpleSearchTreatment': 'simple_search_only',
                     'treatmentFlags':        [

@@ -8,7 +8,10 @@ from deepbnb.api.ApiBase import ApiBase
 
 
 class PdpReviews(ApiBase):
+    """Airbnb API v3 Reviews Endpoint"""
+
     def api_request(self, listing_id: str, limit: int = 7, start_offset: int = 0):
+        """Perform API request."""
         # get first batch of reviews
         reviews, n_reviews_total = self._get_reviews_batch(listing_id, limit, start_offset)
 
@@ -21,6 +24,7 @@ class PdpReviews(ApiBase):
         return reviews
 
     def _get_reviews_batch(self, listing_id: str, limit: int, offset: int):
+        """Get reviews for a given listing ID in batches."""
         url = self._get_url(listing_id, limit, offset)
         headers = self._get_search_headers()
         response = requests.get(url, headers=headers)
@@ -78,17 +82,14 @@ class PdpReviews(ApiBase):
         listing_id = variables['request']['listingId']
         limit = variables['request']['limit']
         offset = variables['request'].get('offset', 0)
-        data = self._spider.read_data(response)
+        data = self.read_data(response)
         pdp_reviews = data['data']['merlin']['pdpReviews']
         n_reviews_total = int(pdp_reviews['metadata']['reviewsCount'])
 
         if offset == 0:  # get all other reviews
             for offset in range(limit, n_reviews_total, limit):
                 url = self._get_url(listing_id, limit, offset)
-                try:
-                    yield scrapy.Request(url, callback=self._parse_reviews, headers=self._get_search_headers())
-                except TypeError as te:
-                    pass
+                yield scrapy.Request(url, callback=self._parse_reviews, headers=self._get_search_headers())
 
         # return distilled review
         yield from ({

@@ -1,18 +1,19 @@
 import json
 
 from abc import abstractmethod
+from logging import LoggerAdapter
 from urllib.parse import urlencode, urlunparse
 
 
 class ApiBase:
 
-    def __init__(self, api_key, spider):
+    def __init__(self, api_key: str, logger: LoggerAdapter):
         self._api_key = api_key
-        self._spider = spider
+        self._logger = logger
 
     @abstractmethod
     def api_request(self, **kwargs):
-        raise NotImplementedError('{} must implement the api_request method.'.format(self.__class__.__name__))
+        raise NotImplementedError(f'{self.__class__.__name__}.api_request method is not defined')
 
     @property
     def api_key(self):
@@ -31,16 +32,23 @@ class ApiBase:
         query['variables'] = json.dumps(query['variables'], separators=(',', ':'))
         query['extensions'] = json.dumps(query['extensions'], separators=(',', ':'))
 
+    def read_data(self, response):
+        """Read response data as json"""
+        self._logger.debug(f"Parsing {response.url}")
+        data = json.loads(response.body)
+
+        return data
+
     def _get_search_headers(self):
         """Get headers for search requests."""
         required_headers = {
+            'Content-Type':              'application/json',
             'X-Airbnb-API-Key':          self._api_key,
             'X-Airbnb-GraphQL-Platform': 'web',
         }
 
         return required_headers | {
             # configurable parameters:
-            'Content-Type':                     'application/json',
             'Device-Memory':                    '8',
             'DPR':                              '2.625',
             'ect':                              '4g',
