@@ -129,7 +129,9 @@ class PdpPlatformSections(ApiBase):
             business_travel_ready=listing_data_cached['business_travel_ready'],
             city=listing_data_cached.get('city', self.__geography['city']),
             country=self.__geography['country'],
-            description=self._html_to_text(description_section['htmlDescription']['htmlText']),
+            description=self._html_to_text(
+                description_section['htmlDescription']['htmlText']
+            ) if description_section.get('htmlDescription') else None,
             host_id=listing_data_cached['host_id'],
             house_rules=[r['title'] for r in policies['houseRules']],
             is_hotel=metadata['bookingPrefetchData']['isHotelRatePlanEnabled'],
