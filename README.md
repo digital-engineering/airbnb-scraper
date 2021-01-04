@@ -104,8 +104,8 @@ search query, then determine the quantity of result pages, and finally iterate
 through each of those, scraping each of the property listings on each page.
 
 Scraped items (listings) will be passed to the default item pipeline, where, 
-optionally, the `description`, `name`, `summary`, and `reviews` fields will be
-filtered using either or both of the `CANNOT_HAVE` and `MUST_HAVE` regexes. 
+optionally, the `description`, `name`, and `reviews.description` fields will 
+be filtered using either or both of the `CANNOT_HAVE` and `MUST_HAVE` regexes. 
 Filtered items will be dropped. Accepted items can be optionally opened in a 
 given web browser, so that you can easily view your search results.
 
@@ -125,7 +125,7 @@ Airbnb site.
   of the stay.*
 * `neighborhoods`: Comma-separated list of neighborhoods within the city
   to filter for.
-* `output`: Name of output file. Only xlsx output is tested.
+* `output`: Name of output file. Only `xlsx` output is tested.
 
 ## Settings
 
@@ -139,7 +139,7 @@ command line using the `-s` flag as in the example above.
 * `FIELDS_TO_EXPORT="['field1', 'field2', ...]"`  
   Can be found in settings.py. Contains a list of all possible fields to 
   export, i.e. all fields of `AirbnbScraperItem`. Comment items to 
-  remove undesired fields from output.
+  remove undesired fields from output. Applies only to `xlsx` output.
   
 * `MINIMUM_MONTHLY_DISCOUNT=30`  
   Minimum monthly discount. 
@@ -153,8 +153,8 @@ command line using the `-s` flag as in the example above.
   Only accept listings that match the given regex pattern. 
   **(optional)**
 
-* `PROPERTY_TYPE_BLACKLIST="['Camper/RV', 'Campsite', 'Entire guest suite']"`  
-  Property Types to filter. 
+* `ROOM_TYPES="['Camper/RV', 'Campsite', 'Entire guest suite']"`  
+  Room Types to filter. 
   **(optional)**
 
 * `SKIP_LIST="['12345678', '12345679', '12345680']"`  

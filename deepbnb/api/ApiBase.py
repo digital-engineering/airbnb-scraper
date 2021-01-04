@@ -7,8 +7,9 @@ from urllib.parse import urlencode, urlunparse
 
 class ApiBase:
 
-    def __init__(self, api_key: str, logger: LoggerAdapter):
+    def __init__(self, api_key: str, logger: LoggerAdapter, currency: str):
         self._api_key = api_key
+        self._currency = currency
         self._logger = logger
 
     @abstractmethod

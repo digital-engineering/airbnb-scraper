@@ -13,6 +13,7 @@ from deepbnb.items import DeepbnbItem
 class PdpPlatformSections(ApiBase):
     """Airbnb API v3 Property Display Endpoint"""
 
+    # Unused. This is just a list of sections where we presently pull data from. (@see `parse_listing_contents()`)
     SECTION_IDS = [
         'AMENITIES_DEFAULT',
         'DESCRIPTION_DEFAULT',
@@ -21,8 +22,16 @@ class PdpPlatformSections(ApiBase):
         'POLICIES_DEFAULT',
     ]
 
-    def __init__(self, api_key: str, logger: LoggerAdapter, data_cache: dict, geography: dict, pdp_reviews: PdpReviews):
-        super().__init__(api_key, logger)
+    def __init__(
+            self,
+            api_key: str,
+            logger: LoggerAdapter,
+            currency: str,
+            data_cache: dict,
+            geography: dict,
+            pdp_reviews: PdpReviews
+    ):
+        super().__init__(api_key, logger, currency)
         self.__data_cache = data_cache
         self.__geography = geography
         self.__regex_amenity_id = re.compile(r'^([a-z0-9]+_)+([0-9]+)_')
@@ -34,7 +43,7 @@ class PdpPlatformSections(ApiBase):
         query = {
             'operationName': 'PdpPlatformSections',
             'locale':        'en',
-            'currency':      'USD',
+            'currency':      self._currency,
             'variables':     {
                 'request': {
                     'id':                            listing_id,

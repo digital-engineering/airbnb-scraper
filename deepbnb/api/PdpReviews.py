@@ -46,7 +46,7 @@ class PdpReviews(ApiBase):
         query = {
             'operationName': 'PdpReviews',
             'locale':        'en',
-            'currency':      'USD',
+            'currency':      self._currency,
             'variables':     {
                 'request': {
                     'fieldSelector':    'for_p3',

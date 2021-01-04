@@ -1,3 +1,4 @@
+import json
 import scrapy
 import re
 
@@ -16,14 +17,15 @@ class ExploreSearch(ApiBase):
             self,
             api_key: str,
             logger: LoggerAdapter,
+            currency: str,
             spider: Spider,
             room_types: list,
             geography: dict,
             query: str,
-            checkin: str,
-            checkout: str
+            checkin: str = None,
+            checkout: str = None
     ):
-        super().__init__(api_key, logger)
+        super().__init__(api_key, logger, currency)
         self.__checkin = checkin
         self.__checkout = checkout
         self.__geography = geography
@@ -34,15 +36,16 @@ class ExploreSearch(ApiBase):
     @staticmethod
     def add_search_params(params, response):
         parsed_qs = parse_qs(urlparse(response.request.url).query)
-        if 'checkin' in parsed_qs:
-            params['checkin'] = parsed_qs['checkin'][0]
-            params['checkout'] = parsed_qs['checkout'][0]
+        variables = json.loads(parsed_qs['variables'][0])['request']
+        if 'checkin' in variables:
+            params['checkin'] = variables['checkin']
+            params['checkout'] = variables['checkout']
 
-        if 'price_max' in parsed_qs:
-            params['price_max'] = parsed_qs['price_max'][0]
+        if 'priceMax' in variables:
+            params['priceMax'] = variables['priceMax']
 
-        if 'price_min' in parsed_qs:
-            params['price_min'] = parsed_qs['price_min'][0]
+        if 'priceMin' in variables:
+            params['priceMin'] = variables['priceMin']
 
         if 'ne_lat' in parsed_qs:
             params['ne_lat'] = parsed_qs['ne_lat'][0]
@@ -157,7 +160,7 @@ class ExploreSearch(ApiBase):
         query = {
             'operationName': 'ExploreSearch',
             'locale':        'en',
-            'currency':      'USD',
+            'currency':      self._currency,
             'variables':     {
                 'request': {
                     'metadataOnly':          False,

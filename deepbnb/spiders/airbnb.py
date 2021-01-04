@@ -53,27 +53,6 @@ class AirbnbSpider(scrapy.Spider):
         self.__sw_lat = sw_lat
         self.__sw_lng = sw_lng
 
-    @staticmethod
-    def iterate_neighborhoods(neighborhoods):
-        for neighborhood in neighborhoods:
-            yield {'neighborhood_ids[]': neighborhood['id']}
-
-    @staticmethod
-    def iterate_prices(price_range):
-        price_range_min, price_range_max, price_inc = price_range
-        price_range_min = max(price_range_min, 0)
-        price_range_max = max(price_range_max, price_range_min + price_inc)
-
-        for price_min in range(price_range_min, price_range_max, price_inc):
-            price_max = price_min + price_inc
-            params = {}
-            if price_min > price_range_min:
-                params['price_min'] = price_min
-            if price_max < price_range_max:
-                params['price_max'] = price_max
-
-            yield params
-
     def parse(self, response, **kwargs):
         """Default parse method."""
         data = self.__explore_search.read_data(response)
@@ -107,6 +86,7 @@ class AirbnbSpider(scrapy.Spider):
         self.__explore_search = ExploreSearch(
             api_key,
             self.logger,
+            self.__currency,
             self,
             self.settings.get('ROOM_TYPES'),
             self.__geography,
@@ -117,18 +97,19 @@ class AirbnbSpider(scrapy.Spider):
         self.__pdp_platform_sections = PdpPlatformSections(
             api_key,
             self.logger,
+            self.__currency,
             self.__data_cache,
             self.__geography,
-            PdpReviews(api_key, self.logger)
+            PdpReviews(api_key, self.logger, self.__currency)
         )
 
         # get params from injected constructor values
         params = {}
         if self.__price_max:
-            params['price_max'] = self.__price_max
+            params['priceMax'] = self.__price_max
 
         if self.__price_min:
-            params['price_min'] = self.__price_min
+            params['priceMin'] = self.__price_min
 
         if self.__ne_lat:
             params['ne_lat'] = self.__ne_lat
@@ -183,6 +164,7 @@ class AirbnbSpider(scrapy.Spider):
             'bedrooms':               listing['bedrooms'],
             'beds':                   listing['beds'],
             'business_travel_ready':  listing['isBusinessTravelReady'],
+            'city':                   listing['city'],
             'host_id':                listing['user']['id'],
             'latitude':               listing['lat'],
             'longitude':              listing['lng'],
