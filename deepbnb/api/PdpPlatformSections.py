@@ -77,7 +77,7 @@ class PdpPlatformSections(ApiBase):
             }
         }
 
-        self._fix_json_params(query)
+        self._put_json_param_strings(query)
         url = self._build_airbnb_url(_api_path, query)
 
         return scrapy.Request(url, callback=self.parse_listing_contents, headers=self._get_search_headers())

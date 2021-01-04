@@ -149,7 +149,7 @@ PROPERTY_AMENITIES = {
     'wifi':    4,
 }
 
-PROPERTY_TYPES = []
+ROOM_TYPES = []
 # Blacklisted property types
 PROPERTY_TYPE_BLACKLIST = ['Camper/RV', 'Campsite', 'Entire guest suite']
 

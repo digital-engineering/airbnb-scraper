@@ -86,7 +86,7 @@ class AirbnbSpider(scrapy.Spider):
             self.__explore_search.add_search_params(next_section, response)
             next_section.update({'itemsOffset': items_offset})
 
-            yield self.__explore_search.api_request(place=self.__query, params=next_section, response=response)
+            yield self.__explore_search.api_request(self.__query, next_section, response=response)
 
         # handle listings
         params = {'key': self.__explore_search.api_key}
@@ -108,7 +108,7 @@ class AirbnbSpider(scrapy.Spider):
             api_key,
             self.logger,
             self,
-            self.settings.get('PROPERTY_TYPES'),
+            self.settings.get('ROOM_TYPES'),
             self.__geography,
             self.__query,
             self.__checkin,
@@ -124,11 +124,11 @@ class AirbnbSpider(scrapy.Spider):
 
         # get params from injected constructor values
         params = {}
-        if self._price_max:
-            params['price_max'] = self._price_max
+        if self.__price_max:
+            params['price_max'] = self.__price_max
 
-        if self._price_min:
-            params['price_min'] = self._price_min
+        if self.__price_min:
+            params['price_min'] = self.__price_min
 
         if self.__ne_lat:
             params['ne_lat'] = self.__ne_lat
@@ -147,8 +147,7 @@ class AirbnbSpider(scrapy.Spider):
             yield from self.__explore_search.perform_checkin_start_requests(
                 checkin_range_spec, checkout_range_spec, params)
         else:
-            yield self.__explore_search.api_request(
-                self.__query, params, callback=self.__explore_search.parse_landing_page)
+            yield self.__explore_search.api_request(self.__query, params, self.__explore_search.parse_landing_page)
 
     @staticmethod
     def _get_neighborhoods(data):
@@ -215,14 +214,19 @@ class AirbnbSpider(scrapy.Spider):
         for section in [s for s in sections if s['sectionComponentType'] == 'listings_ListingsGrid_Explore']:
             for listing_item in section.get('items'):
                 pricing = listing_item['pricingQuote']
-                rate_with_service_fee = pricing['rateWithServiceFee']['amount']
+                rate_with_service_fee = pricing['rateWithServiceFee']
+                if rate_with_service_fee is None:  # some properties need dates to show rates
+                    rate_with_service_fee_amt = 0
+                    pricing['rateWithServiceFee'] = {'amount': None}
+                else:
+                    rate_with_service_fee_amt = rate_with_service_fee['amount']
 
                 # To account for results where price_max was specified as monthly but quoted rate is nightly, calculate
                 # monthly rate and drop listing if it is greater. Use 28 days = 1 month. Assume price_max of 1000+ is a
                 # monthly price requirement.
-                if (self._price_max and self._price_max > 1000
+                if (self.__price_max and self.__price_max > 1000
                         and pricing['rate_type'] != 'monthly'
-                        and (rate_with_service_fee * 28) > self._price_max):
+                        and (rate_with_service_fee_amt * 28) > self.__price_max):
                     continue
 
                 self._collect_listing_data(listing_item)
@@ -256,17 +260,17 @@ class AirbnbSpider(scrapy.Spider):
 
     def __set_price_params(self, price_max, price_min):
         """Set price parameters based on price_max and price_min input values."""
-        self._price_max = price_max
-        self._price_min = price_min
-        if self._price_min and self._price_max:
-            self._price_max = int(self._price_max)
-            self._price_min = int(self._price_min)
-            self.price_range = (self._price_min, self._price_max, self.default_price_increment)
+        self.__price_max = price_max
+        self.__price_min = price_min
+        if self.__price_min and self.__price_max:
+            self.__price_max = int(self.__price_max)
+            self.__price_min = int(self.__price_min)
+            self.price_range = (self.__price_min, self.__price_max, self.default_price_increment)
 
-        if self._price_min and not self._price_max:
-            self._price_min = int(self._price_min)
-            self.price_range = (self._price_min, self.default_max_price, self.default_price_increment)
+        if self.__price_min and not self.__price_max:
+            self.__price_min = int(self.__price_min)
+            self.price_range = (self.__price_min, self.default_max_price, self.default_price_increment)
 
-        if not self._price_min and self._price_max:
-            self._price_max = int(self._price_max)
-            self.price_range = (0, self._price_max, self.default_price_increment)
+        if not self.__price_min and self.__price_max:
+            self.__price_max = int(self.__price_max)
+            self.price_range = (0, self.__price_max, self.default_price_increment)

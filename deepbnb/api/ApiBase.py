@@ -27,7 +27,7 @@ class ApiBase:
         return urlunparse(['https', 'www.airbnb.com', path, None, query, None])
 
     @staticmethod
-    def _fix_json_params(query):
+    def _put_json_param_strings(query: dict):
         """Property format JSON strings for 'variables' & 'extensions' params."""
         query['variables'] = json.dumps(query['variables'], separators=(',', ':'))
         query['extensions'] = json.dumps(query['extensions'], separators=(',', ':'))
