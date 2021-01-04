@@ -1,12 +1,13 @@
 # Airbnb Scraper: Advanced Airbnb Search using Scrapy 
 
 Use Airbnb's unofficial API to efficiently search for rental properties. 
-Regex matching, ranged search, open matched properties in a browser, save to CSV, xlsx, or ElasticSearch (beta).
+Regex matching, ranged search, open matched properties in a browser, save to CSV, xlsx, or ElasticSearch (alpha).
 
 
-## Note
+## Notes
 
-Airbnb's API is subject to change at any moment, which would break this scraper. They've already changed it several times in the past. Also, using this probably violates their TOS. Please only use for educational or research purposes. If you hammer Airbnb's API they will probably block you.
+- Airbnb's API is subject to change at any moment, which would break this scraper. They've already changed it several times in the past. Also, using this probably violates their TOS. Please only use for educational or research purposes.
+- The scraper was recently updated to work with Airbnb's new v3 GraphQL API. Some features are still being updated. 
 
 
 ## Installation (nix)
