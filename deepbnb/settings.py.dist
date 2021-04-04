@@ -96,8 +96,6 @@ FEED_EXPORT_FIELDS = [
     'price_rate_type',
     'total_price',
     'room_and_property_type',
-    'min_nights',
-    'max_nights',
     'latitude',
     'longitude',
     'monthly_price_factor',
