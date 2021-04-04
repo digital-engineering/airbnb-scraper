@@ -32,7 +32,7 @@ NEWSPIDER_MODULE = 'deepbnb.spiders'
 AIRBNB_API_KEY = ''
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
-USER_AGENT = 'deepbnb (+https://digitalengineering.io)'
+USER_AGENT = 'deepbnb (https://airbnb-scraper)'
 
 # Obey robots.txt rules
 ROBOTSTXT_OBEY = True
