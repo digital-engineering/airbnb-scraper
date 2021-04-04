@@ -175,6 +175,9 @@ command line using the `-s` flag as in the example above.
   - Linux  
   `WEB_BROWSER="/usr/bin/google-chrome"`
 
+## Elasticsearch
+
+Enable `deepbnb.pipelines.ElasticBnbPipeline` in `settings.py`
 
 ## Requirements
 
