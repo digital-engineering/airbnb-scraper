@@ -3,6 +3,8 @@ import elasticsearch.exceptions
 import re
 import webbrowser
 
+from datetime import datetime
+
 from deepbnb.model import Listing
 from scrapy.exceptions import DropItem
 
@@ -108,6 +110,8 @@ class BnbPipeline:
 
 
 class ElasticBnbPipeline:
+    _datetime_scrape = datetime.now()
+
     def process_item(self, item, spider):
         """Insert / update items in ElasticSearch."""
         properties = {
@@ -160,6 +164,7 @@ class ElasticBnbPipeline:
             'weekly_price_factor':    item['weekly_price_factor']
         }
 
+        # update if exists, else insert new
         try:
             listing = Listing.get(id=item['id'])
             listing.update(**properties)
