@@ -51,21 +51,3 @@ class Listing(Document):
     transit = Text()
     url = Text(fields={'keyword': Keyword()}, required=True)
     weekly_price_factor = Float()
-
-    class Index:
-        name = 'scrapy_airbnb_listing'
-
-    def save(self, **kwargs):
-        return super(Listing, self).save(**kwargs)
-
-
-class ListingQuote(Document):
-    listing_id = Integer()
-
-    class Index:
-        name = 'scrapy_airbnb_listing_quote'
-
-
-def setup():
-    # Create mapping in ElasticSearch - run this manually on setup
-    Listing.init()
