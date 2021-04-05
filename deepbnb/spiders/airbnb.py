@@ -1,8 +1,11 @@
 import scrapy
 
+from elasticsearch_dsl.index import Index
+
 from deepbnb.api.ExploreSearch import ExploreSearch
 from deepbnb.api.PdpPlatformSections import PdpPlatformSections
 from deepbnb.api.PdpReviews import PdpReviews
+from deepbnb.model import Listing
 
 
 class AirbnbSpider(scrapy.Spider):
@@ -82,6 +85,9 @@ class AirbnbSpider(scrapy.Spider):
     def start_requests(self):
         """Spider entry point. Generate the first search request(s)."""
         self.logger.info(f'starting survey for: {self.__query}')
+        if 'deepbnb.pipelines.ElasticBnbPipeline' in self.settings.get('ITEM_PIPELINES'):
+            self.__create_index_if_not_exists()
+
         api_key = self.settings.get('AIRBNB_API_KEY')
         self.__explore_search = ExploreSearch(
             api_key,
@@ -187,6 +193,12 @@ class AirbnbSpider(scrapy.Spider):
             # use total price if dates given, price rate otherwise. can't show total price if there are no dates.
             'total_price':            pricing['price']['total']['amount'] if self.__checkin else None
         }
+
+    def __create_index_if_not_exists(self):
+        index_name = self.settings.get('ELASTICSEARCH_INDEX')
+        index = Index(index_name)
+        if not index.exists():
+            Listing.init(index_name)
 
     def __get_listings_from_sections(self, sections: list) -> list:
         """Get listings from sections, also collect some data and save it for later. Double check prices are correct,
