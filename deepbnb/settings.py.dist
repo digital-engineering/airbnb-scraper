@@ -18,6 +18,13 @@ NEWSPIDER_MODULE = 'deepbnb.spiders'
 # Scraper config
 #
 
+# Elasticsearch (optional)
+# ELASTICSEARCH_SERVERS = ['localhost']
+# ELASTICSEARCH_INDEX = 'airbnb-listing'
+# ELASTICSEARCH_INDEX_DATE_FORMAT = '%Y-%m'
+# ELASTICSEARCH_TYPE = 'deepbnb'
+# ELASTICSEARCH_UNIQ_KEY = 'url'  # Custom unique key
+
 # Need to create a postgresql database to use this, see http://newcoder.io/scrape/part-3/
 # DATABASE = {
 #     'drivername': 'postgres',
