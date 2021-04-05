@@ -1,5 +1,6 @@
 import scrapy
 
+from datetime import date, timedelta
 from elasticsearch_dsl.index import Index
 
 from deepbnb.api.ExploreSearch import ExploreSearch
@@ -96,9 +97,7 @@ class AirbnbSpider(scrapy.Spider):
             self,
             self.settings.get('ROOM_TYPES'),
             self.__geography,
-            self.__query,
-            self.__checkin,
-            self.__checkout
+            self.__query
         )
         self.__pdp_platform_sections = PdpPlatformSections(
             api_key,
@@ -130,9 +129,9 @@ class AirbnbSpider(scrapy.Spider):
             params['sw_lng'] = self.__sw_lng
 
         if self.__checkin:  # assume self._checkout also
-            checkin_range_spec, checkout_range_spec = self._process_checkin_vars()
+            checkin, checkout, checkin_range_spec, checkout_range_spec = self._process_checkin_vars()
             yield from self.__explore_search.perform_checkin_start_requests(
-                checkin_range_spec, checkout_range_spec, params)
+                checkin, checkout, checkin_range_spec, checkout_range_spec, params)
         else:
             yield self.__explore_search.api_request(self.__query, params, self.__explore_search.parse_landing_page)
 
@@ -201,8 +200,10 @@ class AirbnbSpider(scrapy.Spider):
             Listing.init(index_name)
 
     def __get_listings_from_sections(self, sections: list) -> list:
-        """Get listings from sections, also collect some data and save it for later. Double check prices are correct,
-        because airbnb switches to daily pricing if less than 28 days are selected (e.g. during a range search).
+        """Get listings from "sections" (i.e. search results page sections).
+
+         Also collect some data and save it for later. Double check prices are correct, because Airbnb switches to daily
+         pricing if less than 28 days are selected (e.g. during a range search).
         """
         listing_ids = []
         for section in [s for s in sections if s['sectionComponentType'] == 'listings_ListingsGrid_Explore']:
@@ -229,17 +230,18 @@ class AirbnbSpider(scrapy.Spider):
         return listing_ids
 
     def _process_checkin_vars(self) -> tuple:
-        """Determine if a range is specified, if so, extract ranges and return as variables.
+        """Determine if a range is specified, if so, extract ranges, validate, and return as variables.
 
         @NOTE: Should only be run once on crawler initialization.
 
         :return: checkin/checkout range specs
         """
         if not self.__checkin:
-            return None, None
+            return None, None, None, None
 
         checkin_range_spec, checkout_range_spec = None, None
 
+        # Handle ranged queries
         checkin_plus_range_position = self.__checkin.find('+')
         if checkin_plus_range_position != -1:  # range_spec e.g. +5-3 means plus five days, minus three days
             checkin_range_spec = self.__checkin[checkin_plus_range_position:]
@@ -250,7 +252,15 @@ class AirbnbSpider(scrapy.Spider):
             checkout_range_spec = self.__checkout[checkout_plus_range_position:]
             self.__checkout = self.__checkout[:checkout_plus_range_position]
 
-        return checkin_range_spec, checkout_range_spec
+        # Validate checkin / checkout values
+        today = date.today()
+        if date.fromisoformat(self.__checkin) < today:
+            raise ValueError('Checkin cannot be in past: {}'.format(self.__checkin))
+        tomorrow = today + timedelta(days=1)
+        if date.fromisoformat(self.__checkout) < tomorrow:
+            raise ValueError('Checkout must be tomorrow or later: {}'.format(self.__checkout))
+
+        return self.__checkin, self.__checkout, checkin_range_spec, checkout_range_spec
 
     def __set_price_params(self, price_max, price_min):
         """Set price parameters based on price_max and price_min input values."""

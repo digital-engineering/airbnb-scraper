@@ -21,13 +21,9 @@ class ExploreSearch(ApiBase):
             spider: Spider,
             room_types: list,
             geography: dict,
-            query: str,
-            checkin: str = None,
-            checkout: str = None
+            query: str
     ):
         super().__init__(api_key, logger, currency)
-        self.__checkin = checkin
-        self.__checkout = checkout
         self.__geography = geography
         self.__room_types = room_types
         self.__query = query
@@ -98,9 +94,18 @@ class ExploreSearch(ApiBase):
 
         yield self.api_request(self.__query, search_params, self.__spider.parse, response)
 
-    def perform_checkin_start_requests(self, checkin_range_spec: str, checkout_range_spec: str, params: dict):
+    def perform_checkin_start_requests(
+            self,
+            checkin: str,
+            checkout: str,
+            checkin_range_spec: str,
+            checkout_range_spec: str,
+            params: dict
+    ):
         """Perform requests for start URLs.
 
+        :param checkin:
+        :param checkout:
         :param checkin_range_spec:
         :param checkout_range_spec:
         :param params:
@@ -108,34 +113,34 @@ class ExploreSearch(ApiBase):
         """
         # single request for static start and end dates
         if not (checkin_range_spec or checkout_range_spec):  # simple start and end date
-            params['checkin'] = self.__checkin
-            params['checkout'] = self.__checkout
+            params['checkin'] = checkin
+            params['checkout'] = checkout
             yield self.api_request(self.__query, params, self.parse_landing_page)
 
         # multi request for dynamic start and static end date
         if checkin_range_spec and not checkout_range_spec:  # ranged start date, single end date, iterate over checkin range
-            checkin_start_date, checkin_range = self._build_date_range(self.__checkin, checkin_range_spec)
+            checkin_start_date, checkin_range = self._build_date_range(checkin, checkin_range_spec)
             for i in range(checkin_range.days + 1):  # + 1 to include end date
-                params['checkin'] = self.__checkin = str(checkin_start_date + timedelta(days=i))
-                params['checkout'] = self.__checkout
+                params['checkin'] = str(checkin_start_date + timedelta(days=i))
+                params['checkout'] = checkout
                 yield self.api_request(self.__query, params, self.parse_landing_page)
 
         # multi request for static start and dynamic end date
         if checkout_range_spec and not checkin_range_spec:  # ranged end date, single start date, iterate over checkout range
-            checkout_start_date, checkout_range = self._build_date_range(self.__checkout, checkout_range_spec)
+            checkout_start_date, checkout_range = self._build_date_range(checkout, checkout_range_spec)
             for i in range(checkout_range.days + 1):  # + 1 to include end date
-                params['checkout'] = self.__checkout = str(checkout_start_date + timedelta(days=i))
-                params['checkin'] = self.__checkin
+                params['checkout'] = str(checkout_start_date + timedelta(days=i))
+                params['checkin'] = checkin
                 yield self.api_request(self.__query, params, self.parse_landing_page)
 
         # double nested multi request, iterate over both start and end date ranges
         if checkout_range_spec and checkin_range_spec:
-            checkin_start_date, checkin_range = self._build_date_range(self.__checkin, checkin_range_spec)
-            checkout_start_date, checkout_range = self._build_date_range(self.__checkout, checkout_range_spec)
+            checkin_start_date, checkin_range = self._build_date_range(checkin, checkin_range_spec)
+            checkout_start_date, checkout_range = self._build_date_range(checkout, checkout_range_spec)
             for i in range(checkin_range.days + 1):  # + 1 to include end date
-                params['checkin'] = self.__checkin = str(checkin_start_date + timedelta(days=i))
+                params['checkin'] = str(checkin_start_date + timedelta(days=i))
                 for j in range(checkout_range.days + 1):  # + 1 to include end date
-                    params['checkout'] = self.__checkout = str(checkout_start_date + timedelta(days=j))
+                    params['checkout'] = str(checkout_start_date + timedelta(days=j))
                     yield self.api_request(self.__query, params, self.parse_landing_page)
 
     @staticmethod
