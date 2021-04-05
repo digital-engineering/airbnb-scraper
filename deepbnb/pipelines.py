@@ -112,6 +112,14 @@ class BnbPipeline:
 class ElasticBnbPipeline:
     _datetime_scrape = datetime.now()
 
+    @classmethod
+    def from_crawler(cls, crawler):
+        return cls(elasticsearch_index=crawler.settings.get('ELASTICSEARCH_INDEX'))
+
+    def __init__(self, elasticsearch_index):
+        """Class constructor."""
+        self._elasticsearch_index = elasticsearch_index
+
     def process_item(self, item, spider):
         """Insert / update items in ElasticSearch."""
         properties = {
@@ -166,12 +174,12 @@ class ElasticBnbPipeline:
 
         # update if exists, else insert new
         try:
-            listing = Listing.get(id=item['id'])
+            listing = Listing.get(id=item['id'], index=self._elasticsearch_index)
             listing.update(**properties)
         except elasticsearch.exceptions.NotFoundError:
             properties['meta'] = {'id': item['id']}
             listing = Listing(**properties)
-            listing.save()
+            listing.save(index=self._elasticsearch_index)
 
         return item
 
