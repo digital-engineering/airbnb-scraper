@@ -181,7 +181,7 @@ Enable `deepbnb.pipelines.ElasticBnbPipeline` in `settings.py`
 
 ## Requirements
 
-* Python 3.9+
+* Python 3.10+
 * [Scrapy](http://scrapy.org/)
 * [openpyxl](https://openpyxl.readthedocs.io/en/default/#installation)
 * ElasticSearch 7+ if using elasticsearch pipeline
