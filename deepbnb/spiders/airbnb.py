@@ -1,3 +1,4 @@
+import re
 import scrapy
 
 from datetime import date, timedelta
@@ -164,33 +165,33 @@ class AirbnbSpider(scrapy.Spider):
 
         self.__data_cache[listing['id']] = {
             # get general data
-            'avg_rating':             listing['avgRating'],
-            'bathrooms':              listing['bathrooms'],
-            'bedrooms':               listing['bedrooms'],
-            'beds':                   listing['beds'],
-            'business_travel_ready':  listing['isBusinessTravelReady'],
-            'city':                   listing['city'],
-            'host_id':                listing['user']['id'],
-            'latitude':               listing['lat'],
-            'longitude':              listing['lng'],
-            'name':                   listing['name'],
-            'neighborhood_overview':  listing['neighborhoodOverview'],
-            'person_capacity':        listing['personCapacity'],
-            'photo_count':            listing['pictureCount'],
-            'photos':                 [p['picture'] for p in listing['contextualPictures']],
-            'review_count':           listing['reviewsCount'],
+            'avg_rating': listing['avgRating'],
+            'bathrooms': listing['bathrooms'],
+            'bedrooms': listing['bedrooms'],
+            'beds': listing['beds'],
+            'business_travel_ready': listing['isBusinessTravelReady'],
+            'city': listing['city'],
+            'host_id': listing['user']['id'],
+            'latitude': listing['lat'],
+            'longitude': listing['lng'],
+            'name': listing['name'],
+            'neighborhood_overview': listing['neighborhoodOverview'],
+            'person_capacity': listing['personCapacity'],
+            'photo_count': listing['pictureCount'],
+            'photos': [p['picture'] for p in listing['contextualPictures']],
+            'review_count': listing['reviewsCount'],
             'room_and_property_type': listing['roomAndPropertyType'],
-            'room_type':              listing['roomType'],
-            'room_type_category':     listing['roomTypeCategory'],
-            'star_rating':            listing['starRating'],
+            'room_type': listing['roomType'],
+            'room_type_category': listing['roomTypeCategory'],
+            'star_rating': listing['starRating'],
 
             # get pricing data
-            'monthly_price_factor':   pricing['monthlyPriceFactor'],
-            'weekly_price_factor':    pricing['weeklyPriceFactor'],
-            'price_rate':             pricing['rateWithServiceFee']['amount'],
-            'price_rate_type':        pricing['rateType'],
+            'monthly_price_factor': pricing['monthlyPriceFactor'],
+            'weekly_price_factor': pricing['weeklyPriceFactor'],
+            'price_rate': self.__get_price_rate(pricing),
+            'price_rate_type': self.__get_rate_type(pricing),
             # use total price if dates given, price rate otherwise. can't show total price if there are no dates.
-            'total_price':            pricing['price']['total']['amount'] if self.__checkin else None
+            'total_price': self.__get_total_price(pricing)
         }
 
     def __create_index_if_not_exists(self):
@@ -228,6 +229,26 @@ class AirbnbSpider(scrapy.Spider):
                 listing_ids.append(listing_item['listing']['id'])
 
         return listing_ids
+
+    @staticmethod
+    def __get_price_rate(pricing) -> int:
+        price_key = 'price' if 'price' in pricing['structuredStayDisplayPrice']['primaryLine'] else 'discountedPrice'
+        return int(pricing['structuredStayDisplayPrice']['primaryLine'][price_key].lstrip('$').replace(',', ''))
+
+    @staticmethod
+    def __get_rate_type(pricing) -> str:
+        return pricing['structuredStayDisplayPrice']['primaryLine']['qualifier']
+
+    def __get_total_price(self, pricing) -> int | None:
+        if not self.__checkin:
+            return None  # can't have a price without dates
+
+        price = pricing['structuredStayDisplayPrice']['secondaryLine']['price']
+        amount_match = re.match(r'\$([\w,]+) total', price)
+        if not amount_match:
+            raise ValueError('No amount match found for price: %s' % price)
+
+        return int(amount_match[1].replace(',', ''))
 
     def _process_checkin_vars(self) -> tuple:
         """Determine if a range is specified, if so, extract ranges, validate, and return as variables.
