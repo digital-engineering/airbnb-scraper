@@ -11,6 +11,40 @@ Regex matching, ranged search, open matched properties in a browser, save to CSV
 - If you get 403 Forbidden errors when running this scraper, try browsing the Airbnb site in your web browser from the
   same computer first, then try running the script again.
 
+## Requirements
+
+* **Python 3.10+**
+* [Scrapy](http://scrapy.org/)
+* [openpyxl](https://openpyxl.readthedocs.io/en/default/#installation)
+* ElasticSearch 7+ if using elasticsearch pipeline
+* see [requirements.txt](requirements.txt) for details
+
+## Installation (nix)
+
+```bash
+# Create venv
+python3.10 -m venv env
+
+# Enable venv
+. env/bin/activate
+
+# Install required packages
+pip install -Ur requirements.txt
+
+# Create settings.py
+cp deepbnb/settings.py.dist deepbnb/settings.py
+
+# @NOTE: Don't forget to set AIRBNB_API_KEY in settings.py. To find your API key, 
+# search Airbnb using Chrome, open dev tools, and look for to the url parameter  
+# named "key" in async requests to /api/v2/explore_tabs under the Network tab.
+```
+
+## Configuration
+
+Edit `deepbnb/settings.py` for settings. I've created some custom settings which are
+documented [below](https://github.com/digital-engineering/airbnb-scraper#settings). The rest are documented
+in https://docs.scrapy.org/en/latest/topics/settings.html.
+
 ## Example Usage
 
 #### Minimal scraper usage:
@@ -75,32 +109,6 @@ use `+-[days]`. The numbers may be any integer 0 or greater (large numbers untes
         -a checkin="2020-10-15+5-2" \
         -a checkout="2020-11-15+-3" \
         -o firenze.csv
-
-## Installation (nix)
-
-```bash
-# Create venv
-python3 -m venv env
-
-# Enable venv
-. env/bin/activate
-
-# Install required packages
-pip install -Ur requirements.txt
-
-# Create settings.py
-cp deepbnb/settings.py.dist deepbnb/settings.py
-
-# @NOTE: Don't forget to set AIRBNB_API_KEY in settings.py. To find your API key, 
-# search Airbnb using Chrome, open dev tools, and look for to the url parameter  
-# named "key" in async requests to /api/v2/explore_tabs under the Network tab.
-```
-
-## Configuration
-
-Edit `deepbnb/settings.py` for settings. I've created some custom settings which are
-documented [below](https://github.com/digital-engineering/airbnb-scraper#settings). The rest are documented
-in https://docs.scrapy.org/en/latest/topics/settings.html.
 
 ## Scraping Description
 
@@ -189,14 +197,6 @@ command line using the `-s` flag as in the example above.
 ## Elasticsearch
 
 Enable `deepbnb.pipelines.ElasticBnbPipeline` in `settings.py`
-
-## Requirements
-
-* **Python 3.10+**
-* [Scrapy](http://scrapy.org/)
-* [openpyxl](https://openpyxl.readthedocs.io/en/default/#installation)
-* ElasticSearch 7+ if using elasticsearch pipeline
-* see [requirements.txt](requirements.txt) for details
 
 ## Credits
 
