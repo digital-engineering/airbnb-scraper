@@ -59,7 +59,7 @@ in https://docs.scrapy.org/en/latest/topics/settings.html.
 scrapy crawl airbnb \
     -a query="Madrid, Spain" \
     -a checkin=2023-10-01 \
-    -a checkout=2023-11-31 \
+    -a checkout=2023-11-30 \
     -a max_price=1900 \
     -a min_price=1800 \
     -a neighborhoods="Acacias,Almagro,Arganzuela,Argüelles,Centro,Cortes,Embajadores,Imperial,Jerónimos,La Latina,Malasaña,Moncloa,Palacio,Recoletos,Retiro,Salamanca,Sol" \
