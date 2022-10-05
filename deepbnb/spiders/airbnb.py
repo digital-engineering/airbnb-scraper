@@ -221,7 +221,7 @@ class AirbnbSpider(scrapy.Spider):
                 # monthly rate and drop listing if it is greater. Use 28 days = 1 month. Assume price_max of 1000+ is a
                 # monthly price requirement.
                 if (self.__price_max and self.__price_max > 1000
-                        and pricing['rate_type'] != 'monthly'
+                        and pricing['structuredStayDisplayPrice']['primaryLine']['qualifier'] != 'month'
                         and (rate_with_service_fee_amt * 28) > self.__price_max):
                     continue
 
@@ -231,8 +231,13 @@ class AirbnbSpider(scrapy.Spider):
         return listing_ids
 
     @staticmethod
-    def __get_price_rate(pricing) -> int:
+    def __get_price_key(pricing):
         price_key = 'price' if 'price' in pricing['structuredStayDisplayPrice']['primaryLine'] else 'discountedPrice'
+        return price_key
+
+    @staticmethod
+    def __get_price_rate(pricing) -> int:
+        price_key = AirbnbSpider.__get_price_key(pricing)
         return int(pricing['structuredStayDisplayPrice']['primaryLine'][price_key].lstrip('$').replace(',', ''))
 
     @staticmethod
@@ -243,8 +248,14 @@ class AirbnbSpider(scrapy.Spider):
         if not self.__checkin:
             return None  # can't have a price without dates
 
-        price = pricing['structuredStayDisplayPrice']['secondaryLine']['price']
-        amount_match = re.match(r'\$([\w,]+) total', price)
+        if pricing['structuredStayDisplayPrice']['secondaryLine']:
+            price = pricing['structuredStayDisplayPrice']['secondaryLine']['price']
+            amount_match = re.match(r'\$([\w,]+) total', price)
+        else:
+            price_key = AirbnbSpider.__get_price_key(pricing)
+            price = pricing['structuredStayDisplayPrice']['primaryLine'][price_key]
+            amount_match = re.match(r'\$([\w,]+)', price)
+
         if not amount_match:
             raise ValueError('No amount match found for price: %s' % price)
 
