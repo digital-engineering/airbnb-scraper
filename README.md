@@ -58,8 +58,8 @@ in https://docs.scrapy.org/en/latest/topics/settings.html.
 ```
 scrapy crawl airbnb \
     -a query="Madrid, Spain" \
-    -a checkin=2020-10-01 \
-    -a checkout=2020-11-31 \
+    -a checkin=2023-10-01 \
+    -a checkout=2023-11-31 \
     -a max_price=1900 \
     -a min_price=1800 \
     -a neighborhoods="Acacias,Almagro,Arganzuela,Argüelles,Centro,Cortes,Embajadores,Imperial,Jerónimos,La Latina,Malasaña,Moncloa,Palacio,Recoletos,Retiro,Salamanca,Sol" \
@@ -75,8 +75,8 @@ scrapy crawl airbnb \
 ```
 scrapy crawl airbnb \
     -a query="New York, NY" \
-    -a checkin="2020-01-22+7-0" \
-    -a checkout="2020-02-22+14-3" \
+    -a checkin="2023-01-22+7-0" \
+    -a checkout="2023-02-22+14-3" \
     -a max_price=1800 \
     -s CANNOT_HAVE="guest suite" \
     -s MUST_HAVE="(walking distance|short walk|no car needed|walk everywhere|metro close|public transport)" \
@@ -92,13 +92,13 @@ dates.
 
     scrapy crawl airbnb \
         -a query="Minneapolis, MN" \
-        -a checkin="2020-10-15+5-2" \
-        -a checkout="2020-11-15" \
+        -a checkin="2023-10-15+5-2" \
+        -a checkout="2023-11-15" \
         -o minneapolis.csv
 
-This search would look for rentals in Minneapolis using Oct 15 2020 as base check-in date, and also searching for
+This search would look for rentals in Minneapolis using Oct 15 2023 as base check-in date, and also searching for
 rentals available for check-in 2 days before, up to 5 days after. In other words, check-ins from Oct 13 to Oct 20. This
-is specified by the string `+5-2` appended to the checkin date `2020-10-15+5-2`. The string must always follow the
+is specified by the string `+5-2` appended to the checkin date `2023-10-15+5-2`. The string must always follow the
 pattern`+[days_after]-[days_before]` unless `[days_after]` and `[days_before]` are equal, in which case you can
 use `+-[days]`. The numbers may be any integer 0 or greater (large numbers untested).
 
@@ -106,8 +106,8 @@ use `+-[days]`. The numbers may be any integer 0 or greater (large numbers untes
 
     scrapy crawl airbnb \
         -a query="Florence, Italy" \
-        -a checkin="2020-10-15+5-2" \
-        -a checkout="2020-11-15+-3" \
+        -a checkin="2023-10-15+5-2" \
+        -a checkout="2023-11-15+-3" \
         -o firenze.csv
 
 ## Scraping Description
