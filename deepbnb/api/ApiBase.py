@@ -1,11 +1,11 @@
 import json
 
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 from logging import LoggerAdapter
 from urllib.parse import urlencode, urlunparse
 
 
-class ApiBase:
+class ApiBase(ABC):
 
     def __init__(self, api_key: str, logger: LoggerAdapter, currency: str):
         self._api_key = api_key
@@ -40,7 +40,7 @@ class ApiBase:
 
         return data
 
-    def _get_search_headers(self):
+    def _get_search_headers(self) -> dict:
         """Get headers for search requests."""
         required_headers = {
             'Content-Type':              'application/json',
