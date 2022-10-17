@@ -1,7 +1,10 @@
+import json
 import re
 import scrapy
 
 from datetime import date, timedelta
+from scrapy.http import HtmlResponse
+from scrapy_playwright.page import PageMethod
 
 from deepbnb.api.ExploreSearch import ExploreSearch
 from deepbnb.api.PdpPlatformSections import PdpPlatformSections
@@ -106,7 +109,48 @@ class AirbnbSpider(scrapy.Spider):
             yield from self.__explore_search.perform_checkin_start_requests(
                 checkin, checkout, checkin_range_spec, checkout_range_spec, params)
         else:
-            yield self.__explore_search.api_request(self.__query, params, self.__explore_search.parse_landing_page)
+            search_path = self.__query.replace(', ', '--').replace(' ', '-') + '/homes'
+            url = self.__explore_search.build_airbnb_url('s/' + search_path)
+
+            yield scrapy.Request(url, self.parse_landing_page, meta={
+                'playwright':              True,
+                'playwright_include_page': True,
+                'playwright_page_methods': [PageMethod('wait_for_selector', '#data-deferred-state', state='hidden')]
+            }, errback=self.errback)
+
+    async def errback(self, failure):
+        pass
+        # page = failure.request.meta["playwright_page"]
+        # await page.close()
+
+    def parse_landing_page(self, response: HtmlResponse):
+        """Parse search response and generate URLs for all searches, then perform them."""
+        # debugging: get data from all script data-* attributes
+        # script_data = {s.attrib['id']: json.loads(s.css('::text').get()) for s in response.css('script[id^=data-]')}
+        data_deferred = json.loads(response.xpath('//script[@id="data-deferred-state"]/text()').get())
+        data_deferred['niobeMinimalClientData'][0][0] = json.loads(
+            re.sub(r'^StaysSearch:', '', data_deferred['niobeMinimalClientData'][0][0]))
+
+        explore_data = data_deferred['niobeMinimalClientData'][0][1]['data']['presentation']['explore']
+        if 'sectionIndependentData' in explore_data['sections']:
+            stays_search = explore_data['sections']['sectionIndependentData']['staysSearch']
+            remarketing_data = stays_search['loggingMetadata']['remarketingLoggingData']
+            listing_data = stays_search['searchResults']
+        else:
+            remarketing_data = self.__find_section(explore_data['sections']['sections'], 'EXPLORE_REMARKETING')
+            listing_data_wrapper = self.__find_section(explore_data['sections']['sections'], 'EXPLORE_SECTION_WRAPPER')
+            listing_data = listing_data_wrapper['child']['section']
+
+        self.__geography.update({k: v for k, v in remarketing_data.items() if k in ['city', 'country', 'state']})
+        self.logger.info(f"Geography:\n{self.__geography}")
+
+        cookie = response.headers.get('Set-Cookie')  # maybe use this later?
+
+        # Should we query ExploreSearch and get some additional information first, as the page itself does? For instance,
+        # this may be the way to get place_id
+
+        search_params = {}
+        yield self.__explore_search.api_request(self.__query, search_params, self.__explore_search.parse_landing_page)
 
     def parse(self, response, **kwargs):
         """Default parse method."""
@@ -264,6 +308,11 @@ class AirbnbSpider(scrapy.Spider):
             raise ValueError('No amount match found for price: %s' % price)
 
         return int(amount_match[1].replace(',', ''))
+
+    @staticmethod
+    def __find_section(sections: list, section_type: str):
+        result = [i for i in sections if i.get('sectionComponentType') == section_type]
+        return result.pop().get('section') if result else {}
 
     def _process_checkin_vars(self) -> tuple:
         """Determine if a range is specified, if so, extract ranges, validate, and return as variables.

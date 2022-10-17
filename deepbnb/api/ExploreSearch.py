@@ -205,4 +205,4 @@ class ExploreSearch(ApiBase):
 
         self._put_json_param_strings(query)
 
-        return self._build_airbnb_url(_api_path, query)
+        return self.build_airbnb_url(_api_path, query)

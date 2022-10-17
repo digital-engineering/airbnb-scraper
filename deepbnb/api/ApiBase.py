@@ -16,16 +16,16 @@ class ApiBase(ABC):
     def api_request(self, **kwargs):
         raise NotImplementedError(f'{self.__class__.__name__}.api_request method is not defined')
 
-    @property
-    def api_key(self):
-        return self._api_key
-
     @staticmethod
-    def _build_airbnb_url(path, query=None):
+    def build_airbnb_url(path, query=None):
         if query is not None:
             query = urlencode(query)
 
         return urlunparse(['https', 'www.airbnb.com', path, None, query, None])
+
+    @property
+    def api_key(self):
+        return self._api_key
 
     @staticmethod
     def _put_json_param_strings(query: dict):
