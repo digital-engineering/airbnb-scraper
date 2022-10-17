@@ -159,37 +159,37 @@ class AirbnbSpider(scrapy.Spider):
         """Collect listing data from search results, save in _data_cache. All listing data is aggregated together in the
         parse_listing_contents method."""
         listing = listing_item['listing']
-        pricing = listing_item['pricingQuote']
+        pricing = listing_item['pricingQuote'] or {}
 
         self.__data_cache[listing['id']] = {
             # get general data
-            'avg_rating': listing['avgRating'],
-            'bathrooms': listing['bathrooms'],
-            'bedrooms': listing['bedrooms'],
-            'beds': listing['beds'],
-            'business_travel_ready': listing['isBusinessTravelReady'],
-            'city': listing['city'],
-            'host_id': listing['user']['id'],
-            'latitude': listing['lat'],
-            'longitude': listing['lng'],
-            'name': listing['name'],
-            'neighborhood_overview': listing['neighborhoodOverview'],
-            'person_capacity': listing['personCapacity'],
-            'photo_count': listing['pictureCount'],
-            'photos': [p['picture'] for p in listing['contextualPictures']],
-            'review_count': listing['reviewsCount'],
+            'avg_rating':             listing['avgRating'],
+            'bathrooms':              listing['bathrooms'],
+            'bedrooms':               listing['bedrooms'],
+            'beds':                   listing['beds'],
+            'business_travel_ready':  listing['isBusinessTravelReady'],
+            'city':                   listing['city'],
+            'host_id':                listing['user']['id'],
+            'latitude':               listing['lat'],
+            'longitude':              listing['lng'],
+            'name':                   listing['name'],
+            'neighborhood_overview':  listing['neighborhoodOverview'],
+            'person_capacity':        listing['personCapacity'],
+            'photo_count':            listing['pictureCount'],
+            'photos':                 [p['picture'] for p in listing['contextualPictures']],
+            'review_count':           listing['reviewsCount'],
             'room_and_property_type': listing['roomAndPropertyType'],
-            'room_type': listing['roomType'],
-            'room_type_category': listing['roomTypeCategory'],
-            'star_rating': listing['starRating'],
+            'room_type':              listing['roomType'],
+            'room_type_category':     listing['roomTypeCategory'],
+            'star_rating':            listing['starRating'],
 
             # get pricing data
-            'monthly_price_factor': pricing['monthlyPriceFactor'],
-            'weekly_price_factor': pricing['weeklyPriceFactor'],
-            'price_rate': self.__get_price_rate(pricing),
-            'price_rate_type': self.__get_rate_type(pricing),
+            'monthly_price_factor':   pricing.get('monthlyPriceFactor'),
+            'weekly_price_factor':    pricing.get('weeklyPriceFactor'),
+            'price_rate':             self.__get_price_rate(pricing),
+            'price_rate_type':        self.__get_rate_type(pricing),
             # use total price if dates given, price rate otherwise. can't show total price if there are no dates.
-            'total_price': self.__get_total_price(pricing)
+            'total_price':            self.__get_total_price(pricing)
         }
 
     def __create_index_if_not_exists(self):
@@ -208,20 +208,21 @@ class AirbnbSpider(scrapy.Spider):
         for section in [s for s in sections if s['sectionComponentType'] == 'listings_ListingsGrid_Explore']:
             for listing_item in section.get('items'):
                 pricing = listing_item['pricingQuote']
-                rate_with_service_fee = pricing['rateWithServiceFee']
-                if rate_with_service_fee is None:  # some properties need dates to show rates
-                    rate_with_service_fee_amt = 0
-                    pricing['rateWithServiceFee'] = {'amount': None}
-                else:
-                    rate_with_service_fee_amt = rate_with_service_fee['amount']
+                if pricing:
+                    rate_with_service_fee = pricing['rateWithServiceFee']
+                    if rate_with_service_fee is None:  # some properties need dates to show rates
+                        rate_with_service_fee_amt = 0
+                        pricing['rateWithServiceFee'] = {'amount': None}
+                    else:
+                        rate_with_service_fee_amt = rate_with_service_fee['amount']
 
-                # To account for results where price_max was specified as monthly but quoted rate is nightly, calculate
-                # monthly rate and drop listing if it is greater. Use 28 days = 1 month. Assume price_max of 1000+ is a
-                # monthly price requirement.
-                if (self.__price_max and self.__price_max > 1000
-                        and pricing['structuredStayDisplayPrice']['primaryLine']['qualifier'] != 'month'
-                        and (rate_with_service_fee_amt * 28) > self.__price_max):
-                    continue
+                    # To account for results where price_max was specified as monthly but quoted rate is nightly, calculate
+                    # monthly rate and drop listing if it is greater. Use 28 days = 1 month. Assume price_max of 1000+ is a
+                    # monthly price requirement.
+                    if (self.__price_max and self.__price_max > 1000
+                            and pricing['structuredStayDisplayPrice']['primaryLine']['qualifier'] != 'month'
+                            and (rate_with_service_fee_amt * 28) > self.__price_max):
+                        continue
 
                 self._collect_listing_data(listing_item)
                 listing_ids.append(listing_item['listing']['id'])
@@ -229,18 +230,23 @@ class AirbnbSpider(scrapy.Spider):
         return listing_ids
 
     @staticmethod
-    def __get_price_key(pricing):
-        price_key = 'price' if 'price' in pricing['structuredStayDisplayPrice']['primaryLine'] else 'discountedPrice'
-        return price_key
+    def __get_price_key(pricing) -> str:
+        return 'price' if 'price' in pricing['structuredStayDisplayPrice']['primaryLine'] else 'discountedPrice'
 
     @staticmethod
-    def __get_price_rate(pricing) -> int:
-        price_key = AirbnbSpider.__get_price_key(pricing)
-        return int(pricing['structuredStayDisplayPrice']['primaryLine'][price_key].lstrip('$').replace(',', ''))
+    def __get_price_rate(pricing) -> int | None:
+        if pricing:
+            price_key = AirbnbSpider.__get_price_key(pricing)
+            return int(pricing['structuredStayDisplayPrice']['primaryLine'][price_key].lstrip('$').replace(',', ''))
+
+        return None
 
     @staticmethod
-    def __get_rate_type(pricing) -> str:
-        return pricing['structuredStayDisplayPrice']['primaryLine']['qualifier']
+    def __get_rate_type(pricing) -> str | None:
+        if pricing:
+            return pricing['structuredStayDisplayPrice']['primaryLine']['qualifier']
+
+        return None
 
     def __get_total_price(self, pricing) -> int | None:
         if not self.__checkin:
