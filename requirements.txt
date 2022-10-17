@@ -1,6 +1,5 @@
-elasticsearch==7.12.0
-elasticsearch_dsl==7.3.0
-lxml==4.6.3
-openpyxl==3.0.7
-requests==2.25.1
-Scrapy==2.4.1
+elasticsearch==8.4.3
+lxml==4.9.1
+openpyxl==3.0.10
+requests==2.28.1
+Scrapy==2.6.3

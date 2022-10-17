@@ -2,12 +2,10 @@ import re
 import scrapy
 
 from datetime import date, timedelta
-from elasticsearch_dsl.index import Index
 
 from deepbnb.api.ExploreSearch import ExploreSearch
 from deepbnb.api.PdpPlatformSections import PdpPlatformSections
 from deepbnb.api.PdpReviews import PdpReviews
-from deepbnb.model import Listing
 
 
 class AirbnbSpider(scrapy.Spider):
@@ -196,9 +194,9 @@ class AirbnbSpider(scrapy.Spider):
 
     def __create_index_if_not_exists(self):
         index_name = self.settings.get('ELASTICSEARCH_INDEX')
-        index = Index(index_name)
-        if not index.exists():
-            Listing.init(index_name)
+        # index = Index(index_name)
+        # if not index.exists():
+        #     Listing.init(index_name)
 
     def __get_listings_from_sections(self, sections: list) -> list:
         """Get listings from "sections" (i.e. search results page sections).

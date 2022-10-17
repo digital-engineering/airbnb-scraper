@@ -5,7 +5,7 @@ import webbrowser
 
 from datetime import datetime
 
-from deepbnb.model import Listing
+# from deepbnb.model import Listing
 from scrapy.exceptions import DropItem
 
 
