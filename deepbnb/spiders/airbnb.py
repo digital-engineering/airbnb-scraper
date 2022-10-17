@@ -56,32 +56,6 @@ class AirbnbSpider(scrapy.Spider):
         self.__sw_lat = sw_lat
         self.__sw_lng = sw_lng
 
-    def parse(self, response, **kwargs):
-        """Default parse method."""
-        data = self.__explore_search.read_data(response)
-
-        # Handle pagination
-        next_section = {}
-        pagination = data['data']['dora']['exploreV3']['metadata']['paginationMetadata']
-        if pagination['hasNextPage']:
-            items_offset = pagination['itemsOffset']
-            self.__explore_search.add_search_params(next_section, response)
-            next_section.update({'itemsOffset': items_offset})
-
-            yield self.__explore_search.api_request(self.__query, next_section, response=response)
-
-        # handle listings
-        params = {'key': self.__explore_search.api_key}
-        self.__explore_search.add_search_params(params, response)
-        listing_ids = self.__get_listings_from_sections(data['data']['dora']['exploreV3']['sections'])
-        for listing_id in listing_ids:  # request each property page
-            if listing_id in self.__ids_seen:
-                continue  # filter duplicates
-
-            self.__ids_seen.add(listing_id)
-
-            yield self.__pdp_platform_sections.api_request(listing_id)
-
     def start_requests(self):
         """Spider entry point. Generate the first search request(s)."""
         self.logger.info(f'starting survey for: {self.__query}')
@@ -133,6 +107,32 @@ class AirbnbSpider(scrapy.Spider):
                 checkin, checkout, checkin_range_spec, checkout_range_spec, params)
         else:
             yield self.__explore_search.api_request(self.__query, params, self.__explore_search.parse_landing_page)
+
+    def parse(self, response, **kwargs):
+        """Default parse method."""
+        data = self.__explore_search.read_data(response)
+
+        # Handle pagination
+        next_section = {}
+        pagination = data['data']['dora']['exploreV3']['metadata']['paginationMetadata']
+        if pagination['hasNextPage']:
+            items_offset = pagination['itemsOffset']
+            self.__explore_search.add_search_params(next_section, response)
+            next_section.update({'itemsOffset': items_offset})
+
+            yield self.__explore_search.api_request(self.__query, next_section, response=response)
+
+        # handle listings
+        params = {'key': self.__explore_search.api_key}
+        self.__explore_search.add_search_params(params, response)
+        listing_ids = self.__get_listings_from_sections(data['data']['dora']['exploreV3']['sections'])
+        for listing_id in listing_ids:  # request each property page
+            if listing_id in self.__ids_seen:
+                continue  # filter duplicates
+
+            self.__ids_seen.add(listing_id)
+
+            yield self.__pdp_platform_sections.api_request(listing_id)
 
     @staticmethod
     def _get_neighborhoods(data):
