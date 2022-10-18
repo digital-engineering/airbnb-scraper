@@ -137,7 +137,7 @@ class AirbnbSpider(scrapy.Spider):
         page = failure.request.meta['playwright_page']
         await page.close()
 
-    def parse_landing_page(self, response: HtmlResponse):
+    async def parse_landing_page(self, response: HtmlResponse):
         """Parse search response and generate URLs for all searches, then perform them."""
         # debugging: get data from all script data-* attributes
         # script_data = {s.attrib['id']: json.loads(s.css('::text').get()) for s in response.css('script[id^=data-]')}
