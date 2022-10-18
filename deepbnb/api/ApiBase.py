@@ -40,23 +40,16 @@ class ApiBase(ABC):
 
         return data
 
-    def _get_search_headers(self) -> dict:
+    def _get_search_headers(self, response=None) -> dict:
         """Get headers for search requests."""
-        required_headers = {
-            'Content-Type':              'application/json',
-            'X-Airbnb-API-Key':          self._api_key,
-            'X-Airbnb-GraphQL-Platform': 'web',
+        headers = {
+            'Accept':           '*/*',
+            'Accept-Encoding':  'gzip,deflate',
+            'Connection':       'keep-alive',
+            'User-Agent':       'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36',
+            'X-Airbnb-Api-Key': self._api_key
         }
+        if response:
+            headers['Cookie'] = str(response.headers.get('Set-Cookie'))
 
-        return required_headers | {
-            # configurable parameters:
-            'Device-Memory':                    '8',
-            'DPR':                              '2.625',
-            'ect':                              '4g',
-            'Referer':                          'https://www.airbnb.com/',
-            'User-Agent':                       'Mozilla/5.0 (Linux; Android 8.0; Pixel 2 Build/OPD3.170816.012) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Mobile Safari/537.36',
-            'Viewport-Width':                   '1180',
-            'X-Airbnb-GraphQL-Platform-Client': 'minimalist-niobe',
-            'X-CSRF-Token':                     'V4$.airbnb.com$88klQ0-SkSk$f0wWUrY3M_I37iPj33S8w3-shUgkwi4Dq63e19JPlGQ=',
-            'X-CSRF-Without-Token':             '1',
-        }
+        return headers
