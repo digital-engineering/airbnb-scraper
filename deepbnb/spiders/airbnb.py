@@ -158,13 +158,7 @@ class AirbnbSpider(scrapy.Spider):
         self.__geography.update({k: v for k, v in remarketing_data.items() if k in ['city', 'country', 'state']})
         self.logger.info(f"Geography:\n{self.__geography}")
 
-        cookie = response.headers.get('Set-Cookie')  # maybe use this later?
-
-        # Should we query ExploreSearch and get some additional information first, as the page itself does? For instance,
-        # this may be the way to get place_id
-
-        search_params = {}
-        yield self.__explore_search.api_request(self.__query, search_params, self.__explore_search.parse_landing_page)
+        yield self.__explore_search.api_request(self.__query, {}, self.__explore_search.parse_landing_page, response)
 
     def parse(self, response, **kwargs):
         """Default parse method."""
