@@ -60,7 +60,7 @@ class ExploreSearch(ApiBase):
         request = response.follow if response else scrapy.Request
         callback = callback or self.__spider.parse
         url = self._get_url(query, params)
-        headers = self._get_search_headers()
+        headers = self._get_search_headers(response)
 
         return request(url, callback, headers=headers)
 
