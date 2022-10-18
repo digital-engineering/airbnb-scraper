@@ -85,12 +85,9 @@ class ExploreSearch(ApiBase):
         """Parse search response and generate URLs for all searches, then perform them."""
         data = self.read_data(response)
         search_params = self.get_paginated_search_params(response, data)
-        # neighborhoods = self._get_neighborhoods(data)
 
         self.__geography.update(data['data']['dora']['exploreV3']['metadata']['geography'])
-
-        self._logger.info(f"Geography:\n{self.__geography}")
-        # self.logger.info(f"Neighborhoods:\n{neighborhoods}")
+        self._logger.info(f"Geography:n{self.__geography}")
 
         yield self.api_request(self.__query, search_params, self.__spider.parse, response)
 
