@@ -134,9 +134,8 @@ class AirbnbSpider(scrapy.Spider):
             }, errback=self.errback)
 
     async def errback(self, failure):
-        pass
-        # page = failure.request.meta["playwright_page"]
-        # await page.close()
+        page = failure.request.meta['playwright_page']
+        await page.close()
 
     def parse_landing_page(self, response: HtmlResponse):
         """Parse search response and generate URLs for all searches, then perform them."""
