@@ -62,7 +62,7 @@ class ExploreSearch(ApiBase):
         url = self._get_url(query, params)
         headers = self._get_search_headers(response)
 
-        return request(url, callback, headers=headers)
+        return request(url, callback, headers=headers, meta={'playwright': True})
 
     def get_paginated_search_params(self, response, data):
         """Consolidate search parameters and return result."""
@@ -83,7 +83,9 @@ class ExploreSearch(ApiBase):
 
     def parse_landing_page(self, response):
         """Parse search response and generate URLs for all searches, then perform them."""
-        data = self.read_data(response)
+        self._logger.debug(f"Parsing {response.url}")
+        json_response = response.xpath('body/pre/text()').get()  # remove html wrapper
+        data = json.loads(json_response)
         search_params = self.get_paginated_search_params(response, data)
 
         self.__geography.update(data['data']['dora']['exploreV3']['metadata']['geography'])
