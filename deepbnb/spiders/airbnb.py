@@ -144,14 +144,13 @@ class AirbnbSpider(scrapy.Spider):
             listing_data_wrapper = self.__find_section(explore_data['sections']['sections'], 'EXPLORE_SECTION_WRAPPER')
             listing_data = listing_data_wrapper['child']['section']
 
-        self.__geography.update({k: v for k, v in remarketing_data.items() if k in ['city', 'country', 'state']})
-        self.logger.info(f"Geography:\n{self.__geography}")
-
-        yield self.__explore_search.api_request(self.__query, {}, self.__explore_search.parse_landing_page, response)
+        yield self.__explore_search.api_request(self.__query, {}, self.parse, response, headers)
 
     def parse(self, response, **kwargs):
         """Default parse method."""
-        data = self.__explore_search.read_data(response)
+        self.logger.debug(f"Parsing {response.url}")
+        json_response = response.xpath('body/pre/text()').get()  # remove html wrapper
+        data = json.loads(json_response)
 
         # Handle pagination
         next_section = {}
