@@ -115,32 +115,18 @@ class AirbnbSpider(scrapy.Spider):
         """Search entire city given in self.__query"""
         search_path = self.__query.replace(', ', '--').replace(' ', '-') + '/homes'
         url = self.__explore_search.build_airbnb_url('s/' + search_path)
-        yield scrapy.Request(url, callback=self.parse_landing_page, headers={
-            'accept':                    'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
-            'accept-encoding':           'gzip, deflate, br',
-            'accept-language':           'en-US,en;q=0.9',
-            'cache-control':             'no-cache',
-            'pragma':                    'no-cache',
-            'sec-ch-ua':                 '"Not;A=Brand";v="99", "Chromium";v="106"',
-            'sec-ch-ua-mobile':          '?0',
-            'sec-ch-ua-platform':        '"Linux"',
-            'sec-fetch-dest':            'document',
-            'sec-fetch-mode':            'navigate',
-            'sec-fetch-site':            'none',
-            'sec-fetch-user':            '?1',
-            'upgrade-insecure-requests': '1',
-            'user-agent':                'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36'
-        }, meta={
+        headers = self.__get_search_headers()
+        yield scrapy.Request(url, callback=self.parse_landing_page, headers=headers, meta={
             'playwright':              True,
             'playwright_include_page': True,
             'playwright_page_methods': [PageMethod('wait_for_selector', '#data-deferred-state', state='hidden')]
-        }, errback=self.errback)
+        }, errback=self.errback, cb_kwargs={'headers': headers})
 
     async def errback(self, failure):
         page = failure.request.meta['playwright_page']
         await page.close()
 
-    async def parse_landing_page(self, response: HtmlResponse):
+    async def parse_landing_page(self, response: HtmlResponse, headers: dict):
         """Parse search response and generate URLs for all searches, then perform them."""
         # debugging: get data from all script data-* attributes
         # script_data = {s.attrib['id']: json.loads(s.css('::text').get()) for s in response.css('script[id^=data-]')}
@@ -283,6 +269,25 @@ class AirbnbSpider(scrapy.Spider):
                 listing_ids.append(listing_item['listing']['id'])
 
         return listing_ids
+
+    @staticmethod
+    def __get_search_headers() -> dict:
+        return {
+            'Accept':                    'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+            'Accept-Encoding':           'gzip, deflate, br',
+            'Accept-Language':           'en-US,en;q=0.9',
+            'Cache-Control':             'no-cache',
+            'Pragma':                    'no-cache',
+            'Sec-Ch-Ua':                 '"Not;A=Brand";v="99", "Chromium";v="106"',
+            'Sec-Ch-Ua-Mobile':          '?0',
+            'Sec-Ch-Ua-Platform':        '"Linux"',
+            'Sec-Fetch-Dest':            'document',
+            'Sec-Fetch-Mode':            'navigate',
+            'Sec-Fetch-Site':            'none',
+            'Sec-Fetch-User':            '?1',
+            'Upgrade-Insecure-Requests': '1',
+            'User-Agent':                'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36'
+        }
 
     @staticmethod
     def __get_price_key(pricing) -> str:
