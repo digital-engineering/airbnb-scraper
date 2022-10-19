@@ -159,49 +159,50 @@ class ExploreSearch(ApiBase):
 
         return start_date, end_date - start_date
 
-    def _get_url(self, query: str, params: dict = None):
+    def _get_url(self, search_string: str, params: dict = None):
         _api_path = '/api/v3/ExploreSearch'
         query = {
             'operationName': 'ExploreSearch',
             'locale':        'en',
             'currency':      self._currency,
-            'variables':     {
+            '_cb':           'ld7rar1fhh6if',
+        }
+        data = {
+            'variables':  {
                 'request': {
                     'metadataOnly':          False,
                     'version':               '1.7.9',
                     'itemsPerGrid':          20,
                     'tabId':                 'home_tab',
                     'refinementPaths':       ['/homes'],
-                    'source':                'search_blocks_selector_p1_flow',
-                    'searchType':            'search_query',
-                    'query':                 query,
-                    'roomTypes':             self.__room_types,
+                    'source':                'structured_search_input_header',
+                    'searchType':            'filter_change',
+                    'query':                 search_string,
+                    # 'roomTypes':             self.__room_types,
                     'cdnCacheSafe':          False,
                     'simpleSearchTreatment': 'simple_search_only',
                     'treatmentFlags':        [
                         'simple_search_1_1',
+                        'simple_search_desktop_v3_full_bleed',
                         'flexible_dates_options_extend_one_three_seven_days'
                     ],
-                    'screenSize':            'small'
+                    'screenSize':            'large'
                 }
             },
-            'extensions':    {
+            'extensions': {
                 'persistedQuery': {
                     'version':    1,
                     'sha256Hash': '13aa9971e70fbf5ab888f2a851c765ea098d8ae68c81e1f4ce06e2046d91b6ea'
                 }
             }
         }
-
         if params:
-            query['variables']['request'] |= params
+            data['variables']['request'] |= params
 
-        # if self.settings.get('PROPERTY_AMENITIES'):
-        #     amenities = self.settings.get('PROPERTY_AMENITIES').values()
-        #     query = list(query.items())  # convert dict to list of tuples because we need multiple identical keys
-        #     for a in amenities:
-        #         query.append(('amenities[]', a))
+        self._put_json_param_strings(data)
 
-        self._put_json_param_strings(query)
+        url = self.build_airbnb_url(_api_path, query)
+        url += '&variables=%s' % data['variables']
+        url += '&extensions=%s' % data['extensions']
 
-        return self.build_airbnb_url(_api_path, query)
+        return url
