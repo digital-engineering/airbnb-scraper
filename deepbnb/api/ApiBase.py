@@ -2,6 +2,7 @@ import json
 
 from abc import abstractmethod, ABC
 from logging import LoggerAdapter
+from scrapy.http import Response
 from urllib.parse import urlencode, urlunparse
 
 
@@ -33,7 +34,7 @@ class ApiBase(ABC):
         query['variables'] = json.dumps(query['variables'], separators=(',', ':'))
         query['extensions'] = json.dumps(query['extensions'], separators=(',', ':'))
 
-    def read_data(self, response):
+    def read_data(self, response: Response):
         """Read response data as json"""
         self._logger.debug(f"Parsing {response.url}")
         data = json.loads(response.body)
