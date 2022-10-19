@@ -55,14 +55,14 @@ class ExploreSearch(ApiBase):
         if 'sw_lng' in parsed_qs:
             params['sw_lng'] = parsed_qs['sw_lng'][0]
 
-    def api_request(self, query, params=None, callback=None, response=None):
+    def api_request(self, query, params=None, callback=None, response=None, headers=None):
         """Perform API request."""
         request = response.follow if response else scrapy.Request
         callback = callback or self.__spider.parse
         url = self._get_url(query, params)
-        headers = self._get_search_headers(response)
-
-        return request(url, callback, headers=headers, meta={'playwright': True})
+        search_headers = self._get_search_headers(response)
+        headers = headers | search_headers if headers else search_headers
+        return request(url, callback, headers=headers, meta={'playwright': True}, cb_kwargs={'headers': headers})
 
     def get_paginated_search_params(self, response, data):
         """Consolidate search parameters and return result."""
@@ -89,7 +89,7 @@ class ExploreSearch(ApiBase):
         search_params = self.get_paginated_search_params(response, data)
 
         self.__geography.update(data['data']['dora']['exploreV3']['metadata']['geography'])
-        self._logger.info(f"Geography:n{self.__geography}")
+        self._logger.info(f"Geography:\n{self.__geography}")
 
         yield self.api_request(self.__query, search_params, self.__spider.parse, response)
 
