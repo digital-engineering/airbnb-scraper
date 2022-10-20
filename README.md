@@ -2,7 +2,7 @@
 
 ## Disclaimer: No longer maintained
 
-### This project is not currently maintained, due to difficulty in using scrapy to make requests to the Airbnb API. Project is on hold until further notice. Currently exploring a simpler approach.
+### This project is not currently maintained, due to difficulty in using scrapy to make requests to the Airbnb API. Project is on hold until further notice. Currently exploring a simpler approach here: https://github.com/JoeBashe/stl-scraper.
 
 Use Airbnb's unofficial API to efficiently search for rental properties.
 Regex matching, ranged search, open matched properties in a browser, save to CSV, xlsx, or ElasticSearch (alpha).
